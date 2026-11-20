@@ -30,8 +30,8 @@ rules. This project measures that, on real data.
 
 - [x] Semantic model: dbt + MetricFlow on DuckDB, 18 metrics, 18 data tests
 - [x] Benchmark: 30 test questions (24 with correct SQL, 6 the data can't answer) and 8 dev questions
-- [x] MCP server and REST API over one core, 51 tests
-- [ ] Agent page where every answer shows its definition, filters and SQL
+- [x] MCP server and REST API over one core
+- [x] Agent page where every answer shows its definition, filters and SQL (62 tests)
 - [ ] Results: raw text-to-SQL vs semantic layer vs semantic layer modeled for agents
 - [ ] Hosted demo
 
@@ -57,10 +57,10 @@ Claude Code:
 claude mcp add talk-to-your-metrics -- uv run --directory /path/to/talk-to-your-metrics python -m ttym.mcp_server
 ```
 
-REST, and MCP over HTTP at `/mcp`:
+The page at `/`, REST, and MCP over HTTP at `/mcp` (the page needs `GROQ_API_KEY` or `GEMINI_API_KEY` in `.env`):
 
 ```bash
-make serve
+make serve   # http://localhost:8000
 curl -s localhost:8000/query -H 'content-type: application/json' \
   -d '{"metrics": ["revenue"], "group_by": ["metric_time__year"]}'
 ```

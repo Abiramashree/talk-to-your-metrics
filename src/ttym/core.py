@@ -130,7 +130,7 @@ class SemanticLayer:
         order_by = q.order_by or group_by  # stable output: unordered results come back in arbitrary order
         for o in order_by:
             if o.removeprefix("-") not in allowed_order:
-                raise QueryError(f"order_by '{o}' must be one of the requested metrics or group_by: {sorted(allowed_order)}.")
+                raise QueryError(f"order_by '{_short(o)}' must be one of the requested metrics or group_by: {sorted(allowed_order)}.")
         if q.limit is not None and not 1 <= q.limit <= MAX_ROWS:
             raise QueryError(f"limit must be between 1 and {MAX_ROWS}.")
         limit = q.limit or MAX_ROWS
@@ -168,8 +168,9 @@ class SemanticLayer:
             raise QueryError("Ask for at least one metric. Call list_metrics to see them.")
         unknown = [m for m in metrics if m not in self._metrics]
         if unknown:
+            shown = [_short(m) for m in unknown[:5]]
             raise QueryError(
-                f"Unknown metric(s): {unknown}. This semantic layer has no such metric, so the question may "
+                f"Unknown metric(s): {shown}. This semantic layer has no such metric, so the question may "
                 f"not be answerable from this data. Available: {sorted(self._metrics)}."
             )
 
@@ -192,21 +193,21 @@ class SemanticLayer:
         if name.startswith("metric_time"):
             grain = name.removeprefix("metric_time").removeprefix("__") or "day"
             if grain not in GRAINS:
-                raise QueryError(f"Time grain '{grain}' is not supported. Use metric_time__<grain> with one of {list(GRAINS)}.")
+                raise QueryError(f"Time grain '{_short(grain)}' is not supported. Use metric_time__<grain> with one of {list(GRAINS)}.")
             return f"metric_time__{grain}"
         if name not in dims:
             time = " and metric_time__<grain>" if allow_time else ""
-            raise QueryError(f"Cannot group by '{name}' with these metrics. Available: {sorted(dims) or 'none'}{time}.")
+            raise QueryError(f"Cannot group by '{_short(name)}' with these metrics. Available: {sorted(dims) or 'none'}{time}.")
         return name
 
     def _render_filter(self, f: Filter, dims: dict) -> str:
         if f.dimension.startswith("metric_time"):
             raise QueryError("Filter time with start and end (YYYY-MM-DD), not with a filter.")
         if f.dimension not in dims:
-            raise QueryError(f"Cannot filter by '{f.dimension}' with these metrics. Available: {sorted(dims)}.")
+            raise QueryError(f"Cannot filter by '{_short(f.dimension)}' with these metrics. Available: {sorted(dims)}.")
         op = f.operator.lower().strip()
         if op not in OPERATORS:
-            raise QueryError(f"Operator '{f.operator}' is not supported. Use one of {list(OPERATORS)}.")
+            raise QueryError(f"Operator '{_short(f.operator)}' is not supported. Use one of {list(OPERATORS)}.")
         if op in ("in", "not in"):
             if not isinstance(f.value, list) or not f.value:
                 raise QueryError(f"Operator '{op}' needs a non-empty list of values.")
@@ -231,7 +232,13 @@ class SemanticLayer:
         try:
             return dt.datetime.combine(dt.date.fromisoformat(value), dt.time())
         except (TypeError, ValueError):
-            raise QueryError(f"{label} must be a date like 2017-01-01, got {value!r}.") from None
+            raise QueryError(f"{label} must be a date like 2017-01-01, got {_short(str(value))!r}.") from None
+
+
+def _short(text: str, limit: int = 60) -> str:
+    """Caller input repeated in an error message, cut short so errors can't be used to amplify requests."""
+    text = str(text)
+    return text if len(text) <= limit else text[:limit] + "…"
 
 
 def _literal(value: Any) -> str:

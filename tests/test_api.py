@@ -77,3 +77,77 @@ async def test_mcp_over_http(live_server, anyio_backend):
     async with Client(f"{live_server}/mcp") as client:
         out = (await client.call_tool("list_metrics", {})).structured_content
         assert len(out["metrics"]) == 18
+
+
+def test_page_and_security_headers(client):
+    r = client.get("/")
+    assert r.status_code == 200 and "<title>Talk to your metrics</title>" in r.text
+    assert "default-src 'self'" in r.headers["content-security-policy"]
+    assert r.headers["x-content-type-options"] == "nosniff"
+    assert client.get("/static/app.js").status_code == 200
+
+
+def test_ask_returns_answer_and_working(client, monkeypatch):
+    from fakes import FakeLLM, call, final
+    import ttym.api as api
+
+    script = [
+        call("query_metrics", {"metrics": ["revenue"], "filters": [{"dimension": "order__state", "operator": "=", "value": "SP"}]}),
+        final({"answer": "x", "columns": ["revenue"], "rows": [[1.0]]}),
+    ]
+    monkeypatch.setattr(api, "LLM", lambda provider: FakeLLM(list(script)))
+    monkeypatch.setattr(api, "limiter", api.Limiter(per_ip=10, per_day=10))
+    r = client.post("/ask", json={"question": "Revenue in SP?"})
+    assert r.status_code == 200
+    working = r.json()["working"]
+    assert working["filters"][0]["value"] == "SP" and "Excludes freight" in working["definitions"]["revenue"]
+    assert working["sql"].startswith("SELECT")
+
+
+def test_ask_limits_and_validation(client, monkeypatch):
+    from fakes import FakeLLM, final
+    import ttym.api as api
+
+    monkeypatch.setattr(api, "LLM", lambda provider: FakeLLM([final({"cannot_answer": "no"})] * 5))
+    monkeypatch.setattr(api, "limiter", api.Limiter(per_ip=2, per_day=100))
+    assert client.post("/ask", json={"question": "x" * 301}).status_code == 422
+    codes = [client.post("/ask", json={"question": "Profit?"}).status_code for _ in range(3)]
+    assert codes == [200, 200, 429]
+
+
+def test_security_hardening(client, monkeypatch):
+    from fakes import FakeLLM, final
+    import ttym.api as api
+
+    big = '{"metrics": ["' + "a" * 100_000 + '"]}'
+    assert client.post("/query", content=big, headers={"content-type": "application/json"}).status_code == 413
+    long_name = client.post("/query", json={"metrics": ["a" * 101]})
+    assert long_name.status_code == 422 and len(long_name.text) < 5_000
+    r = client.post("/query", json={"metrics": ["nope"]})
+    assert r.status_code == 400 and r.headers["cache-control"] == "no-store"
+    assert r.headers["x-frame-options"] == "DENY" and "max-age" in r.headers["strict-transport-security"]
+
+    monkeypatch.setattr(api, "LLM", lambda provider: FakeLLM([final({"cannot_answer": "no"})] * 3))
+    monkeypatch.setattr(api, "limiter", api.Limiter(per_ip=10, per_day=10))
+    assert client.post("/ask", json={"question": "Profit?"}, headers={"origin": "https://evil.example"}).status_code == 403
+    assert client.post("/ask", json={"question": "Profit?"}, headers={"origin": "http://testserver"}).status_code == 200
+
+
+def test_page_table_uses_query_result_not_model_copy(client, monkeypatch):
+    from fakes import FakeLLM, call, final
+    import ttym.api as api
+
+    script = [call("query_metrics", {"metrics": ["repeat_customers"]}),
+              final({"answer": "x", "columns": ["repeat_customers"], "rows": [[999999]]})]  # model misreports
+    monkeypatch.setattr(api, "LLM", lambda provider: FakeLLM(list(script)))
+    monkeypatch.setattr(api, "limiter", api.Limiter(per_ip=10, per_day=10))
+    data = client.post("/ask", json={"question": "Repeat customers?"}).json()
+    assert data["working"]["rows"] == [[2997]]
+
+
+def test_long_input_is_not_echoed(layer):
+    from ttym.core import Query, QueryError
+
+    with pytest.raises(QueryError) as e:
+        layer.query(Query(["z" * 5000]))
+    assert len(str(e.value)) < 1000

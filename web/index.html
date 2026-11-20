@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Talk to your metrics</title>
+  <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header>
+    <span>Talk to your metrics</span>
+    <a href="https://github.com/Abiramashree/talk-to-your-metrics">GitHub</a>
+  </header>
+  <main>
+    <form id="ask">
+      <input id="question" name="question" maxlength="300" autocomplete="off" autofocus
+             placeholder="Ask about Olist orders" aria-label="Question">
+    </form>
+    <div id="examples">
+      <button type="button">Revenue by quarter in 2017</button>
+      <button type="button">Top 5 product categories by revenue</button>
+      <button type="button">Late delivery rate by state in 2018</button>
+    </div>
+    <section id="result" hidden>
+      <p id="answer"></p>
+      <div id="table-wrap"><table id="table"></table></div>
+      <details id="how" hidden>
+        <summary>How it was calculated</summary>
+        <dl id="facts"></dl>
+        <pre id="sql"></pre>
+      </details>
+    </section>
+  </main>
+</body>
+</html>

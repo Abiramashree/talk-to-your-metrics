@@ -7,13 +7,16 @@
 from __future__ import annotations
 
 import argparse
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 
 from ttym.core import MAX_ROWS, Filter, Query, QueryError, SemanticLayer
+
+Name = Annotated[str, StringConstraints(max_length=100)]
+Value = str | int | float | bool
 
 INSTRUCTIONS = """\
 Answers business questions about the Olist marketplace (orders 2016-09 to 2018-10) from governed metrics.
@@ -23,9 +26,9 @@ Never compute a number yourself when a metric exists. If no metric fits the ques
 
 
 class FilterIn(BaseModel):
-    dimension: str = Field(description="A dimension name from get_dimensions, e.g. order__state.")
+    dimension: Name = Field(description="A dimension name from get_dimensions, e.g. order__state.")
     operator: Literal["=", "!=", ">", ">=", "<", "<=", "in", "not in"]
-    value: str | int | float | bool | list[str | int | float | bool] = Field(
+    value: Annotated[str, StringConstraints(max_length=200)] | int | float | bool | list[Value] = Field(
         description="A value, or a list of values for in / not in."
     )
 
@@ -39,7 +42,7 @@ def build_server(layer: SemanticLayer) -> MCPServer:
         return layer.list_metrics()
 
     @server.tool()
-    def get_dimensions(metrics: list[str]) -> dict[str, Any]:
+    def get_dimensions(metrics: list[Name]) -> dict[str, Any]:
         """List the dimensions the given metrics can all be grouped and filtered by, and the time grains."""
         try:
             return layer.get_dimensions(metrics)
@@ -48,12 +51,12 @@ def build_server(layer: SemanticLayer) -> MCPServer:
 
     @server.tool()
     def query_metrics(
-        metrics: list[str],
-        group_by: list[str] | None = None,
+        metrics: list[Name],
+        group_by: list[Name] | None = None,
         filters: list[FilterIn] | None = None,
-        start: str | None = None,
-        end: str | None = None,
-        order_by: list[str] | None = None,
+        start: Name | None = None,
+        end: Name | None = None,
+        order_by: list[Name] | None = None,
         limit: int | None = None,
     ) -> dict[str, Any]:
         """Query metrics. Returns rows and the SQL that produced them.

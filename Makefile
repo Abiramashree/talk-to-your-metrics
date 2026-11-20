@@ -16,7 +16,7 @@ test:
 	$(PY) -m pytest -q -p no:logging
 
 serve:
-	.venv/bin/uvicorn ttym.api:app --port 8000
+	.venv/bin/uvicorn ttym.api:app --port 8000 --no-server-header
 
 mcp:
 	$(PY) -m ttym.mcp_server
