@@ -1,0 +1,341 @@
+models:
+  - name: metricflow_time_spine
+    time_spine:
+      standard_granularity_column: date_day
+    columns:
+      - name: date_day
+        granularity: day
+
+semantic_models:
+  - name: orders
+    description: One row per order, any status.
+    model: ref('fct_orders')
+    defaults:
+      agg_time_dimension: purchased_at
+    entities:
+      - name: order
+        type: primary
+        expr: order_id
+      - name: customer
+        type: foreign
+        expr: customer_id
+    dimensions:
+      - name: purchased_at
+        type: time
+        description: When the order was placed. Every metric is dated by this.
+        type_params:
+          time_granularity: day
+      - name: status
+        type: categorical
+        description: "Order status: delivered, shipped, canceled, unavailable, invoiced, processing, created, approved."
+      - name: state
+        type: categorical
+        description: Two-letter Brazilian state of the customer on the order, e.g. SP, RJ, MG.
+      - name: is_late
+        type: categorical
+        description: True when delivered after the estimated date (compared as dates). Empty for orders not delivered.
+      - name: review_score
+        type: categorical
+        description: Review stars 1–5, using the latest review when an order has several. Empty when not reviewed.
+    measures:
+      - name: order_count
+        agg: count
+        expr: order_id
+      - name: customer_count
+        agg: count_distinct
+        expr: customer_id
+      - name: late_order_count
+        agg: sum
+        expr: case when is_late then 1 else 0 end
+      - name: delivered_with_date_count
+        agg: sum
+        expr: case when has_delivery then 1 else 0 end
+      - name: delivery_days_avg
+        agg: average
+        expr: delivery_days
+      - name: review_score_avg
+        agg: average
+        expr: review_score
+
+  - name: order_items
+    description: One row per item in an order.
+    model: ref('fct_order_items')
+    defaults:
+      agg_time_dimension: purchased_at
+    entities:
+      - name: order_item
+        type: primary
+        expr: order_item_id
+      - name: order
+        type: foreign
+        expr: order_id
+      - name: product
+        type: foreign
+        expr: product_id
+    dimensions:
+      - name: purchased_at
+        type: time
+        description: When the order was placed.
+        type_params:
+          time_granularity: day
+    measures:
+      - name: price_sum
+        agg: sum
+        expr: price
+      - name: freight_sum
+        agg: sum
+        expr: freight
+
+  - name: payments
+    description: One row per payment on an order (orders can be split across payments).
+    model: ref('fct_payments')
+    defaults:
+      agg_time_dimension: purchased_at
+    entities:
+      - name: payment
+        type: primary
+        expr: payment_id
+      - name: order
+        type: foreign
+        expr: order_id
+    dimensions:
+      - name: purchased_at
+        type: time
+        description: When the order was placed.
+        type_params:
+          time_granularity: day
+      - name: payment_type
+        type: categorical
+        description: "How it was paid: credit_card, boleto, voucher, debit_card, not_defined."
+    measures:
+      - name: amount_sum
+        agg: sum
+        expr: amount
+
+  - name: customers
+    description: One row per person (customer_unique_id), with their order count.
+    model: ref('dim_customers')
+    defaults:
+      agg_time_dimension: first_order_at
+    entities:
+      - name: customer
+        type: primary
+        expr: customer_id
+    dimensions:
+      - name: first_order_at
+        type: time
+        description: When the customer placed their first order.
+        type_params:
+          time_granularity: day
+    measures:
+      - name: all_customer_count
+        agg: count
+        expr: customer_id
+      - name: repeat_customer_count
+        agg: sum
+        expr: case when orders >= 2 then 1 else 0 end
+
+  - name: products
+    description: One row per product.
+    model: ref('dim_products')
+    entities:
+      - name: product
+        type: primary
+        expr: product_id
+    dimensions:
+      - name: category
+        type: categorical
+        description: Product category in English (Portuguese when no translation exists), e.g. health_beauty.
+
+metrics:
+  - name: revenue
+    label: Revenue
+    description: Sum of item prices on delivered orders. Excludes freight. The default meaning of "revenue" and "sales".
+    type: simple
+    type_params:
+      measure: price_sum
+    filter: "{{ Dimension('order__status') }} = 'delivered'"
+    config:
+      meta:
+        synonyms: [sales, net sales, item revenue]
+
+  - name: freight
+    label: Freight
+    description: Freight charged on items of delivered orders.
+    type: simple
+    type_params:
+      measure: freight_sum
+    filter: "{{ Dimension('order__status') }} = 'delivered'"
+    config:
+      meta:
+        synonyms: [shipping, shipping fees, delivery charges]
+
+  - name: gross_merchandise_value
+    label: Gross merchandise value
+    description: Revenue plus freight on delivered orders.
+    type: derived
+    type_params:
+      expr: revenue + freight
+      metrics:
+        - name: revenue
+        - name: freight
+    config:
+      meta:
+        synonyms: [GMV, revenue including freight, total order value]
+
+  - name: payments
+    label: Payments
+    description: Money paid for delivered orders, including installment interest and vouchers. Differs from revenue + freight.
+    type: simple
+    type_params:
+      measure: amount_sum
+    filter: "{{ Dimension('order__status') }} = 'delivered'"
+    config:
+      meta:
+        synonyms: [payments received, amount paid, cash collected]
+
+  - name: orders
+    label: Orders
+    description: Orders placed, any status. Includes canceled and undelivered orders.
+    type: simple
+    type_params:
+      measure: order_count
+    config:
+      meta:
+        synonyms: [orders placed, number of orders, order volume]
+
+  - name: delivered_orders
+    label: Delivered orders
+    description: Orders with status delivered.
+    type: simple
+    type_params:
+      measure: order_count
+    filter: "{{ Dimension('order__status') }} = 'delivered'"
+    config:
+      meta:
+        synonyms: [completed orders, fulfilled orders]
+
+  - name: canceled_orders
+    label: Canceled orders
+    description: Orders with status canceled.
+    type: simple
+    type_params:
+      measure: order_count
+    filter: "{{ Dimension('order__status') }} = 'canceled'"
+    config:
+      meta:
+        synonyms: [cancellations, cancelled orders]
+
+  - name: cancellation_rate
+    label: Cancellation rate
+    description: Canceled orders divided by orders placed. A fraction between 0 and 1.
+    type: ratio
+    type_params:
+      numerator: canceled_orders
+      denominator: orders
+    config:
+      meta:
+        synonyms: [cancel rate, share of orders canceled]
+
+  - name: average_order_value
+    label: Average order value
+    description: Revenue divided by delivered orders. Excludes freight.
+    type: ratio
+    type_params:
+      numerator: revenue
+      denominator: delivered_orders
+    config:
+      meta:
+        synonyms: [AOV, average basket, average ticket]
+
+  - name: customers
+    label: Customers
+    description: Distinct people with at least one order in the period, counted by customer_unique_id.
+    type: simple
+    type_params:
+      measure: customer_count
+    config:
+      meta:
+        synonyms: [unique customers, buyers, shoppers]
+
+  - name: repeat_customers
+    label: Repeat customers
+    description: People with two or more orders, all time. Query without a time filter.
+    type: simple
+    type_params:
+      measure: repeat_customer_count
+    config:
+      meta:
+        synonyms: [returning customers, customers who ordered more than once]
+
+  - name: repeat_customer_rate
+    label: Repeat customer rate
+    description: Repeat customers divided by all customers, all time. A fraction between 0 and 1. Query without a time filter.
+    type: ratio
+    type_params:
+      numerator: repeat_customers
+      denominator:
+        name: all_customers
+    config:
+      meta:
+        synonyms: [repeat purchase rate, share of repeat customers, retention]
+
+  - name: all_customers
+    label: All customers
+    description: Every person who has ever ordered, dated by their first order.
+    type: simple
+    type_params:
+      measure: all_customer_count
+    config:
+      meta:
+        synonyms: [customer base, total customers]
+
+  - name: late_delivery_rate
+    label: Late delivery rate
+    description: Late orders divided by delivered orders with a delivery date. Late means delivered after the estimated date, compared as dates. A fraction between 0 and 1.
+    type: ratio
+    type_params:
+      numerator:
+        name: late_orders
+      denominator:
+        name: delivered_orders_with_date
+    config:
+      meta:
+        synonyms: [late rate, share of late deliveries, on-time miss rate]
+
+  - name: late_orders
+    label: Late orders
+    description: Delivered orders that arrived after the estimated date, compared as dates.
+    type: simple
+    type_params:
+      measure: late_order_count
+    config:
+      meta:
+        synonyms: [late deliveries, delayed orders]
+
+  - name: delivered_orders_with_date
+    label: Delivered orders with a delivery date
+    description: Delivered orders that have a recorded delivery date (8 delivered orders lack one).
+    type: simple
+    type_params:
+      measure: delivered_with_date_count
+
+  - name: average_delivery_days
+    label: Average delivery days
+    description: Calendar days from purchase date to delivery date, averaged over delivered orders with a delivery date.
+    type: simple
+    type_params:
+      measure: delivery_days_avg
+    config:
+      meta:
+        synonyms: [delivery time, days to deliver, shipping time]
+
+  - name: average_review_score
+    label: Average review score
+    description: Average stars (1–5) over orders with a review, using the latest review per order.
+    type: simple
+    type_params:
+      measure: review_score_avg
+    config:
+      meta:
+        synonyms: [rating, customer satisfaction, review stars, CSAT]

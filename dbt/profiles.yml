@@ -1,0 +1,6 @@
+talk_to_your_metrics:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('TTYM_DUCKDB', 'data/olist.duckdb') }}"

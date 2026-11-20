@@ -1,0 +1,15 @@
+name: talk_to_your_metrics
+version: "0.1.0"
+profile: talk_to_your_metrics
+model-paths: [models]
+test-paths: [tests]
+
+flags:
+  require_yaml_configuration_for_mf_time_spines: true
+
+models:
+  talk_to_your_metrics:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table
