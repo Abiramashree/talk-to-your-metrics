@@ -13,15 +13,22 @@ On the Olist e-commerce data (99,441 orders, 2016–2018):
 | What share of deliveries were late? | 8.1% or 6.8%. Comparing timestamps counts on-the-day deliveries as late |
 
 A semantic layer defines each metric once, so an agent asks for `revenue` instead of writing
-its own SQL. Vendor benchmarks show this helps. What they don't separate is how much comes from
+its own SQL. Vendor benchmarks ([dbt](https://docs.getdbt.com/blog/semantic-layer-vs-text-to-sql-2026),
+[Cube](https://arxiv.org/abs/2604.25149)) show this helps. What they don't separate is how much comes from
 the layer itself and how much from modeling it for agents: clear definitions, synonyms, stated
-rules. This project measures that, on real data, with questions frozen before the model was written.
+rules. This project measures that, on real data.
+
+## Method
+
+- Correct answers are SQL on the raw tables, never the semantic layer ([questions](bench/questions.yaml), [definitions](bench/definitions.md)).
+- Test questions are never run through the layer before scoring; tuning uses the dev questions only.
+- [Scoring rules](bench/scoring.md) and [predictions](bench/predictions.md) were committed before any run.
 
 ## Status
 
-- [x] Semantic model: dbt + MetricFlow on DuckDB, 18 metrics, 30 data tests
-- [x] Benchmark: 30 test and 8 dev questions with correct SQL, committed before the model
-- [x] MCP server and REST API over one core, 40 tests
+- [x] Semantic model: dbt + MetricFlow on DuckDB, 18 metrics, 18 data tests
+- [x] Benchmark: 30 test questions (24 with correct SQL, 6 the data can't answer) and 8 dev questions
+- [x] MCP server and REST API over one core, 51 tests
 - [ ] Agent page where every answer shows its definition, filters and SQL
 - [ ] Results: raw text-to-SQL vs semantic layer vs semantic layer modeled for agents
 - [ ] Hosted demo

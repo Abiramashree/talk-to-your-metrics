@@ -10,6 +10,7 @@ import copy
 import datetime as dt
 import decimal
 import logging
+import math
 import os
 import pathlib
 import re
@@ -113,8 +114,14 @@ class SemanticLayer:
         from metricflow.engine.metricflow_engine import MetricFlowQueryRequest
 
         self._check_metrics(q.metrics)
+        all_time = [m for m in q.metrics if self._is_all_time(m)]
+        if all_time and (q.start or q.end or any(g.startswith("metric_time") for g in q.group_by)):
+            raise QueryError(
+                f"{all_time} count people over all time (two or more orders ever), so a date range or time "
+                f"grouping would change their meaning. Query them without start, end or metric_time."
+            )
         dims = self._shared_dimensions(q.metrics)
-        group_by = [self._check_group_by(g, dims) for g in q.group_by]
+        group_by = [self._check_group_by(g, dims, allow_time=not all_time) for g in q.group_by]
         where = [self._render_filter(f, dims) for f in q.filters]
         start, end = self._parse_date(q.start, "start"), self._parse_date(q.end, "end")
         if start and end and start > end:
@@ -137,8 +144,11 @@ class SemanticLayer:
             order_by_names=order_by or None,
             limit=q.limit,
         )
-        with self._lock:
-            result = self._mf.query(request)
+        try:
+            with self._lock:
+                result = self._mf.query(request)
+        except Exception as e:  # database or planner rejection: return a reason the caller can act on
+            raise QueryError(f"The query was rejected: {_reason(e)}") from None
         table = result.result_df
         rows = [[_plain(v) for v in row] for row in table.rows]
         out: dict[str, Any] = {
@@ -163,6 +173,10 @@ class SemanticLayer:
                 f"not be answerable from this data. Available: {sorted(self._metrics)}."
             )
 
+    def _is_all_time(self, metric: str) -> bool:
+        m = self._metrics[metric]
+        return bool(m.config and (m.config.meta or {}).get("all_time"))
+
     def _shared_dimensions(self, metrics: list[str]) -> dict:
         """Categorical dimensions every requested metric can be grouped and filtered by."""
         per_metric = []
@@ -174,14 +188,15 @@ class SemanticLayer:
         shared = set.intersection(*(set(p) for p in per_metric))
         return {name: per_metric[0][name] for name in shared}
 
-    def _check_group_by(self, name: str, dims: dict) -> str:
+    def _check_group_by(self, name: str, dims: dict, allow_time: bool = True) -> str:
         if name.startswith("metric_time"):
             grain = name.removeprefix("metric_time").removeprefix("__") or "day"
             if grain not in GRAINS:
                 raise QueryError(f"Time grain '{grain}' is not supported. Use metric_time__<grain> with one of {list(GRAINS)}.")
             return f"metric_time__{grain}"
         if name not in dims:
-            raise QueryError(f"Cannot group by '{name}' with these metrics. Available: {sorted(dims)} and metric_time__<grain>.")
+            time = " and metric_time__<grain>" if allow_time else ""
+            raise QueryError(f"Cannot group by '{name}' with these metrics. Available: {sorted(dims) or 'none'}{time}.")
         return name
 
     def _render_filter(self, f: Filter, dims: dict) -> str:
@@ -224,12 +239,22 @@ def _literal(value: Any) -> str:
     if isinstance(value, bool):
         return "true" if value else "false"
     if isinstance(value, (int, float)) and not isinstance(value, bool):
+        if not math.isfinite(value):
+            raise QueryError("Filter values must be finite numbers.")
         return repr(value)
     if isinstance(value, str):
         if "{" in value or "}" in value or len(value) > 200:
             raise QueryError("Filter values may not contain braces or exceed 200 characters.")
         return "'" + value.replace("'", "''") + "'"
     raise QueryError(f"Filter values must be text, numbers or true/false, got {type(value).__name__}.")
+
+
+def _reason(error: Exception) -> str:
+    """The database's own message (e.g. a failed type conversion), without stack or file details."""
+    lines = [line.strip() for line in str(error).splitlines() if line.strip()]
+    lines = [line for line in lines if line not in ("Runtime Error", "Database Error")]
+    message = lines[0] if lines else type(error).__name__
+    return re.sub(r"(/[\w.-]+)+", "<path>", message)[:300]
 
 
 def _plain(value: Any) -> Any:

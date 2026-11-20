@@ -37,6 +37,13 @@ def test_query_errors_are_400_with_reason(client):
     assert r.status_code == 400 and "Unknown metric" in r.json()["error"]
 
 
+def test_bad_values_are_400_not_500(client):
+    for value in ["banana", float("nan")]:
+        body = '{"metrics": ["revenue"], "filters": [{"dimension": "order__is_late", "operator": "=", "value": %s}]}'
+        r = client.post("/query", content=body % ('"banana"' if value == "banana" else "NaN"), headers={"content-type": "application/json"})
+        assert r.status_code == 400, r.text
+
+
 def test_query_validates_body(client):
     assert client.post("/query", json={"metrics": []}).status_code == 422
     bad_filter = {"metrics": ["revenue"], "filters": [{"dimension": "order__state", "operator": "like", "value": "%"}]}

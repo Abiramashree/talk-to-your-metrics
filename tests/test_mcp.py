@@ -53,6 +53,12 @@ async def test_errors_come_back_as_tool_errors(server):
             "metrics": ["revenue"], "filters": [{"dimension": "order__state", "operator": "like", "value": "%"}],
         })
         assert result.is_error
+        result = await client.call_tool("query_metrics", {
+            "metrics": ["revenue"], "filters": [{"dimension": "order__is_late", "operator": "=", "value": "banana"}],
+        })
+        assert result.is_error and "Could not convert" in result.content[0].text
+        result = await client.call_tool("query_metrics", {"metrics": ["repeat_customers"], "start": "2017-01-01"})
+        assert result.is_error and "over all time" in result.content[0].text
 
 
 async def test_bare_server(layer):

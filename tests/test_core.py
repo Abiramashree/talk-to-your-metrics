@@ -26,6 +26,7 @@ def test_list_metrics(layer):
     revenue = next(m for m in out["metrics"] if m["name"] == "revenue")
     assert "Excludes freight" in revenue["description"] and "sales" in revenue["synonyms"]
     assert out["today"] == "2018-10-17"
+    assert "new_customers" in names and "all_customers" not in names
 
 
 def test_bare_view_strips_metadata_only(layer):
@@ -73,6 +74,13 @@ def test_truncation_flag(layer):
         (Query(["revenue"], start="2018-02-01", end="2018-01-01"), "after end"),
         (Query(["revenue"], order_by=["orders"]), "order_by"),
         (Query(["revenue"], limit=5000), "limit"),
+        (Query(["repeat_customers"], start="2017-01-01", end="2017-12-31"), "over all time"),
+        (Query(["repeat_customer_rate"], group_by=["metric_time__year"]), "over all time"),
+        (Query(["repeat_customers", "orders"], end="2017-12-31"), "over all time"),
+        (Query(["revenue"], filters=[Filter("order__is_late", "=", "banana")]), "Could not convert string 'banana' to BOOL"),
+        (Query(["revenue"], filters=[Filter("order__review_score", ">", "abc")]), "Could not convert string 'abc'"),
+        (Query(["revenue"], filters=[Filter("order__state", "=", float("nan"))]), "finite"),
+        (Query(["revenue"], filters=[Filter("order__state", "=", float("inf"))]), "finite"),
     ],
 )
 def test_rejects(layer, query, message):
@@ -104,3 +112,26 @@ def test_grouped_results_are_ordered_by_default(layer):
     for _ in range(5):
         years = [r[0] for r in layer.query(Query(["revenue"], group_by=["metric_time__year"]))["rows"]]
         assert years == ["2016-01-01", "2017-01-01", "2018-01-01"]
+
+
+def test_all_time_metrics_without_dates(layer):
+    assert layer.query(Query(["repeat_customers"]))["rows"] == [[2997]]
+    assert layer.query(Query(["new_customers"]))["rows"] == [[96096]]
+
+
+def test_new_customers_differ_from_customers_in_a_period(layer):
+    year = dict(start="2017-01-01", end="2017-12-31")
+    assert layer.query(Query(["new_customers"], **year))["rows"] == [[43708]]
+    assert layer.query(Query(["customers"], **year))["rows"] == [[43713]]
+
+
+def test_scoring_kinds_cover_every_expected_answer(answers):
+    import pathlib
+
+    import yaml
+
+    kinds = yaml.safe_load((pathlib.Path(__file__).resolve().parents[1] / "bench" / "scoring.yaml").read_text())
+    assert set(kinds) == set(answers)
+    for qid, a in answers.items():
+        assert len(kinds[qid]) == len(a["columns"]), qid
+        assert set(kinds[qid]) <= {"key", "count", "money", "average", "rate"}

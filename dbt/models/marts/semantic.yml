@@ -128,7 +128,7 @@ semantic_models:
         type_params:
           time_granularity: day
     measures:
-      - name: all_customer_count
+      - name: new_customer_count
         agg: count
         expr: customer_id
       - name: repeat_customer_count
@@ -260,35 +260,37 @@ metrics:
 
   - name: repeat_customers
     label: Repeat customers
-    description: People with two or more orders, all time. Query without a time filter.
+    description: People with two or more orders, all time. Cannot be limited to a date range.
     type: simple
     type_params:
       measure: repeat_customer_count
     config:
       meta:
+        all_time: true
         synonyms: [returning customers, customers who ordered more than once]
 
   - name: repeat_customer_rate
     label: Repeat customer rate
-    description: Repeat customers divided by all customers, all time. A fraction between 0 and 1. Query without a time filter.
+    description: Repeat customers divided by all customers, all time. A fraction between 0 and 1. Cannot be limited to a date range.
     type: ratio
     type_params:
       numerator: repeat_customers
       denominator:
-        name: all_customers
+        name: new_customers
     config:
       meta:
+        all_time: true
         synonyms: [repeat purchase rate, share of repeat customers, retention]
 
-  - name: all_customers
-    label: All customers
-    description: Every person who has ever ordered, dated by their first order.
+  - name: new_customers
+    label: New customers
+    description: People whose first order falls in the period. Over all time, every customer.
     type: simple
     type_params:
-      measure: all_customer_count
+      measure: new_customer_count
     config:
       meta:
-        synonyms: [customer base, total customers]
+        synonyms: [first-time customers, customer acquisition, newly acquired customers]
 
   - name: late_delivery_rate
     label: Late delivery rate
