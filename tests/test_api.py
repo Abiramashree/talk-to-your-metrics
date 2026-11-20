@@ -100,7 +100,8 @@ def test_ask_returns_answer_and_working(client, monkeypatch):
     r = client.post("/ask", json={"question": "Revenue in SP?"})
     assert r.status_code == 200
     working = r.json()["working"]
-    assert working["filters"][0]["value"] == "SP" and "Excludes freight" in working["definitions"]["revenue"]
+    assert working["query"]["filters"][0]["value"] == "SP" and "Excludes freight" in working["definitions"]["revenue"]
+    assert working["query"]["metrics"] == ["revenue"] and working["steps"][0]["tool"] == "query_metrics"
     assert working["sql"].startswith("SELECT")
 
 
@@ -151,3 +152,11 @@ def test_long_input_is_not_echoed(layer):
     with pytest.raises(QueryError) as e:
         layer.query(Query(["z" * 5000]))
     assert len(str(e.value)) < 1000
+
+
+def test_playground_query_limit(client, monkeypatch):
+    import ttym.api as api
+
+    monkeypatch.setattr(api, "query_limiter", api.Limiter(per_ip=2, per_day=100))
+    codes = [client.post("/query", json={"metrics": ["orders"]}).status_code for _ in range(3)]
+    assert codes == [200, 200, 429]

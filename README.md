@@ -31,7 +31,7 @@ rules. This project measures that, on real data.
 - [x] Semantic model: dbt + MetricFlow on DuckDB, 18 metrics, 18 data tests
 - [x] Benchmark: 30 test questions (24 with correct SQL, 6 the data can't answer) and 8 dev questions
 - [x] MCP server and REST API over one core
-- [x] Agent page where every answer shows its definition, filters and SQL (62 tests)
+- [x] Agent page: chat, charts, and a query playground where any answer can be regrouped, filtered or re-sorted without the AI
 - [ ] Results: raw text-to-SQL vs semantic layer vs semantic layer modeled for agents
 - [ ] Hosted demo
 

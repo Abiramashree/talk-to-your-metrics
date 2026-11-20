@@ -98,6 +98,11 @@ class Limiter:
 
 
 limiter = Limiter(ASK_PER_IP, ASK_PER_DAY)
+query_limiter = Limiter(per_ip=int(os.environ.get("TTYM_QUERY_PER_IP", "300")), per_day=int(os.environ.get("TTYM_QUERY_PER_DAY", "50000")))
+
+
+def _client(request: Request) -> str:
+    return request.client.host if request.client else "unknown"
 
 
 class QueryIn(BaseModel):
@@ -135,7 +140,10 @@ def dimensions(metrics: list[Name] = Param(min_length=1, max_length=10)) -> dict
 
 
 @app.post("/query")
-def query(body: QueryIn) -> dict[str, Any]:
+def query(body: QueryIn, request: Request) -> Any:
+    refused = query_limiter.allow(_client(request))
+    if refused:
+        return JSONResponse(status_code=429, content={"error": refused})
     return layer.query(
         Query(
             metrics=body.metrics,
@@ -154,7 +162,7 @@ async def ask_question(body: AskIn, request: Request) -> JSONResponse:
     origin = request.headers.get("origin")
     if origin and origin.split("://", 1)[-1] != request.headers.get("host"):
         return JSONResponse(status_code=403, content={"error": "Cross-site requests are not allowed."})
-    refused = limiter.allow(request.client.host if request.client else "unknown")
+    refused = limiter.allow(_client(request))
     if refused:
         return JSONResponse(status_code=429, content={"error": refused})
     try:
@@ -170,19 +178,28 @@ async def ask_question(body: AskIn, request: Request) -> JSONResponse:
 
 
 def working(trace: list[dict]) -> dict | None:
-    """What the page shows under an answer: the last successful metric query."""
+    """What the page shows for an answer: the last successful metric query, editable, plus the agent's steps."""
+    steps = [{"tool": s["tool"], "arguments": s["arguments"], "ok": not (isinstance(s["result"], dict) and "error" in s["result"])}
+             for s in trace]
     for step in reversed(trace):
         result = step["result"]
         if step["tool"] == "query_metrics" and isinstance(result, dict) and "sql" in result:
             args = step["arguments"]
             return {
+                "query": {
+                    "metrics": args.get("metrics") or [],
+                    "group_by": args.get("group_by") or [],
+                    "filters": args.get("filters") or [],
+                    "start": args.get("start"),
+                    "end": args.get("end"),
+                    "order_by": args.get("order_by") or [],
+                    "limit": args.get("limit"),
+                },
                 "definitions": result.get("definitions", {}),
-                "filters": args.get("filters") or [],
-                "group_by": args.get("group_by") or [],
-                "start": args.get("start"),
-                "end": args.get("end"),
                 "columns": result["columns"],
                 "rows": result["rows"],
+                "truncated": result.get("truncated", False),
                 "sql": result["sql"],
+                "steps": steps,
             }
-    return None
+    return {"query": None, "steps": steps} if steps else None

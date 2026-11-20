@@ -4,34 +4,54 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Talk to your metrics</title>
+  <meta name="description" content="Ask Olist's e-commerce data in plain English. Answers come from a dbt semantic layer over MCP, with the definition and SQL behind every number.">
   <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/app.css">
-  <script src="/static/app.js" defer></script>
+  <script type="module" src="/static/app.js"></script>
 </head>
 <body>
-  <header>
-    <span>Talk to your metrics</span>
+  <header class="top">
+    <span class="brand">Talk to your metrics</span>
     <a href="https://github.com/Abiramashree/talk-to-your-metrics">GitHub</a>
   </header>
-  <main>
-    <form id="ask">
-      <input id="question" name="question" maxlength="300" autocomplete="off" autofocus
-             placeholder="Ask about Olist orders" aria-label="Question">
-    </form>
-    <div id="examples">
-      <button type="button">Revenue by quarter in 2017</button>
-      <button type="button">Top 5 product categories by revenue</button>
-      <button type="button">Late delivery rate by state in 2018</button>
+
+  <section class="hero">
+    <div class="hero-text">
+      <h1>Ask Olist's data.<br>Get the governed number.</h1>
+      <p>An AI agent answers through a dbt semantic layer over MCP. Every number comes with its definition and SQL, and every query can be edited by hand.</p>
     </div>
-    <section id="result" hidden>
-      <p id="answer"></p>
-      <div id="table-wrap"><table id="table"></table></div>
-      <details id="how" hidden>
-        <summary>How it was calculated</summary>
-        <dl id="facts"></dl>
-        <pre id="sql"></pre>
-      </details>
-    </section>
-  </main>
+  </section>
+
+  <section class="app" aria-label="Assistant">
+    <div class="chat">
+      <div class="thread" id="thread" aria-live="polite">
+        <div class="empty" id="empty">
+          <h2>What do you want to know?</h2>
+          <div class="suggestions">
+            <button type="button">Revenue by quarter in 2017</button>
+            <button type="button">Top 5 product categories by revenue</button>
+            <button type="button">Late delivery rate by state in 2018</button>
+          </div>
+        </div>
+      </div>
+      <form class="composer" id="composer">
+        <input id="question" maxlength="300" autocomplete="off" placeholder="Ask about Olist orders" aria-label="Question">
+        <button type="submit" aria-label="Ask">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+        </button>
+      </form>
+    </div>
+
+    <aside class="panel" id="panel" aria-label="Query">
+      <div class="panel-head">
+        <h2>Query</h2>
+        <div>
+          <button type="button" class="small-btn" id="new-query">New</button>
+          <button type="button" class="small-btn close" id="close-panel" aria-label="Close">×</button>
+        </div>
+      </div>
+      <div class="panel-body" id="panel-body"></div>
+    </aside>
+  </section>
 </body>
 </html>
