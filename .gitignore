@@ -8,3 +8,4 @@ dbt/logs/
 *.duckdb.wal
 .env
 .DS_Store
+dbt/.user.yml
