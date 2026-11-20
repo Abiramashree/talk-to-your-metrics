@@ -1,0 +1,340 @@
+{
+  "t01": {
+    "columns": [
+      "revenue"
+    ],
+    "rows": [
+      [
+        5962902.01
+      ]
+    ]
+  },
+  "t02": {
+    "columns": [
+      "month",
+      "revenue"
+    ],
+    "rows": [
+      [
+        "2018-01-01T00:00:00",
+        924645.0
+      ],
+      [
+        "2018-02-01T00:00:00",
+        826437.13
+      ],
+      [
+        "2018-03-01T00:00:00",
+        953356.25
+      ],
+      [
+        "2018-04-01T00:00:00",
+        973534.09
+      ],
+      [
+        "2018-05-01T00:00:00",
+        977544.69
+      ],
+      [
+        "2018-06-01T00:00:00",
+        856077.86
+      ]
+    ]
+  },
+  "t03": {
+    "columns": [
+      "category",
+      "revenue"
+    ],
+    "rows": [
+      [
+        "health_beauty",
+        755724.5
+      ]
+    ]
+  },
+  "t04": {
+    "columns": [
+      "gross_merchandise_value"
+    ],
+    "rows": [
+      [
+        6921535.24
+      ]
+    ]
+  },
+  "t05": {
+    "columns": [
+      "freight"
+    ],
+    "rows": [
+      [
+        1233459.65
+      ]
+    ]
+  },
+  "t06": {
+    "columns": [
+      "payments"
+    ],
+    "rows": [
+      [
+        6922900.24
+      ]
+    ]
+  },
+  "t07": {
+    "columns": [
+      "repeat_customers"
+    ],
+    "rows": [
+      [
+        2997
+      ]
+    ]
+  },
+  "t08": {
+    "columns": [
+      "repeat_customer_rate"
+    ],
+    "rows": [
+      [
+        0.031188
+      ]
+    ]
+  },
+  "t09": {
+    "columns": [
+      "customers"
+    ],
+    "rows": [
+      [
+        43713
+      ]
+    ]
+  },
+  "t10": {
+    "columns": [
+      "state",
+      "orders"
+    ],
+    "rows": [
+      [
+        "SP",
+        17760
+      ]
+    ]
+  },
+  "t11": {
+    "columns": [
+      "delivered_orders"
+    ],
+    "rows": [
+      [
+        43428
+      ]
+    ]
+  },
+  "t12": {
+    "columns": [
+      "canceled_orders"
+    ],
+    "rows": [
+      [
+        334
+      ]
+    ]
+  },
+  "t13": {
+    "columns": [
+      "average_order_value"
+    ],
+    "rows": [
+      [
+        137.305471
+      ]
+    ]
+  },
+  "t14": {
+    "columns": [
+      "cancellation_rate"
+    ],
+    "rows": [
+      [
+        0.005876
+      ]
+    ]
+  },
+  "t15": {
+    "columns": [
+      "orders"
+    ],
+    "rows": [
+      [
+        45101
+      ]
+    ]
+  },
+  "t16": {
+    "columns": [
+      "late_delivery_rate"
+    ],
+    "rows": [
+      [
+        0.056487
+      ]
+    ]
+  },
+  "t17": {
+    "columns": [
+      "late_delivery_rate"
+    ],
+    "rows": [
+      [
+        0.050024
+      ]
+    ]
+  },
+  "t18": {
+    "columns": [
+      "delivery_days"
+    ],
+    "rows": [
+      [
+        12.063588
+      ]
+    ]
+  },
+  "t19": {
+    "columns": [
+      "average_review_score"
+    ],
+    "rows": [
+      [
+        4.087132
+      ]
+    ]
+  },
+  "t20": {
+    "columns": [
+      "is_late",
+      "average_review_score"
+    ],
+    "rows": [
+      [
+        false,
+        4.290386
+      ],
+      [
+        true,
+        2.270491
+      ]
+    ]
+  },
+  "t21": {
+    "columns": [
+      "orders"
+    ],
+    "rows": [
+      [
+        6260
+      ]
+    ]
+  },
+  "t22": {
+    "columns": [
+      "year",
+      "revenue"
+    ],
+    "rows": [
+      [
+        2016,
+        40470.98
+      ],
+      [
+        2017,
+        5962902.01
+      ]
+    ]
+  },
+  "t23": {
+    "columns": [
+      "revenue"
+    ],
+    "rows": [
+      [
+        7218125.12
+      ]
+    ]
+  },
+  "t24": {
+    "columns": [
+      "payments"
+    ],
+    "rows": [
+      [
+        1330026.39
+      ]
+    ]
+  },
+  "d01": {
+    "columns": [
+      "revenue"
+    ],
+    "rows": [
+      [
+        2704438.38
+      ]
+    ]
+  },
+  "d02": {
+    "columns": [
+      "delivered_orders"
+    ],
+    "rows": [
+      [
+        7003
+      ]
+    ]
+  },
+  "d03": {
+    "columns": [
+      "average_review_score"
+    ],
+    "rows": [
+      [
+        4.089102
+      ]
+    ]
+  },
+  "d04": {
+    "columns": [
+      "late_delivery_rate"
+    ],
+    "rows": [
+      [
+        0.067731
+      ]
+    ]
+  },
+  "d05": {
+    "columns": [
+      "gross_merchandise_value"
+    ],
+    "rows": [
+      [
+        8451584.77
+      ]
+    ]
+  },
+  "d06": {
+    "columns": [
+      "payments"
+    ],
+    "rows": [
+      [
+        177632.79
+      ]
+    ]
+  }
+}

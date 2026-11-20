@@ -1,0 +1,365 @@
+# Benchmark questions. Frozen before the semantic model was written (see README).
+# `sql` is the correct answer, written against the raw tables and following definitions.md.
+# split: test = scored once per setup; dev = used for tuning prompts and the model.
+# trap: the mistake the question is designed to expose.
+
+- id: t01
+  split: test
+  trap: revenue-definition
+  question: What was our total revenue in 2017?
+  sql: |
+    select sum(cast(i.price as decimal(18, 2))) as revenue
+    from raw.order_items i join raw.orders o using (order_id)
+    where o.order_status = 'delivered' and year(o.order_purchase_timestamp) = 2017
+
+- id: t02
+  split: test
+  trap: revenue-definition
+  question: Show revenue by month for the first half of 2018.
+  sql: |
+    select date_trunc('month', o.order_purchase_timestamp) as month, sum(cast(i.price as decimal(18, 2))) as revenue
+    from raw.order_items i join raw.orders o using (order_id)
+    where o.order_status = 'delivered'
+      and o.order_purchase_timestamp >= '2018-01-01' and o.order_purchase_timestamp < '2018-07-01'
+    group by 1 order by 1
+
+- id: t03
+  split: test
+  trap: revenue-definition
+  question: Which product category brought in the most revenue in 2018?
+  sql: |
+    select coalesce(t.product_category_name_english, p.product_category_name) as category, sum(cast(i.price as decimal(18, 2))) as revenue
+    from raw.order_items i
+    join raw.orders o using (order_id)
+    join raw.products p using (product_id)
+    left join raw.product_category_name_translation t using (product_category_name)
+    where o.order_status = 'delivered' and year(o.order_purchase_timestamp) = 2018
+    group by 1 order by 2 desc limit 1
+
+- id: t04
+  split: test
+  trap: revenue-definition
+  question: What was gross merchandise value, including freight, in 2017?
+  sql: |
+    select sum(cast(i.price as decimal(18, 2)) + cast(i.freight_value as decimal(18, 2))) as gross_merchandise_value
+    from raw.order_items i join raw.orders o using (order_id)
+    where o.order_status = 'delivered' and year(o.order_purchase_timestamp) = 2017
+
+- id: t05
+  split: test
+  trap: revenue-definition
+  question: How much did customers pay in freight in 2018?
+  sql: |
+    select sum(cast(i.freight_value as decimal(18, 2))) as freight
+    from raw.order_items i join raw.orders o using (order_id)
+    where o.order_status = 'delivered' and year(o.order_purchase_timestamp) = 2018
+
+- id: t06
+  split: test
+  trap: revenue-definition
+  question: How much did we receive in payments for orders placed in 2017?
+  sql: |
+    select sum(cast(p.payment_value as decimal(18, 2))) as payments
+    from raw.order_payments p join raw.orders o using (order_id)
+    where o.order_status = 'delivered' and year(o.order_purchase_timestamp) = 2017
+
+- id: t07
+  split: test
+  trap: customer-identity
+  question: How many customers have ordered more than once?
+  sql: |
+    select count(*) as repeat_customers
+    from (
+      select c.customer_unique_id
+      from raw.orders o join raw.customers c using (customer_id)
+      group by 1 having count(*) >= 2
+    )
+
+- id: t08
+  split: test
+  trap: customer-identity
+  question: What share of our customers are repeat customers?
+  sql: |
+    select count(*) filter (where n >= 2) / count(*) as repeat_customer_rate
+    from (
+      select c.customer_unique_id, count(*) as n
+      from raw.orders o join raw.customers c using (customer_id)
+      group by 1
+    )
+
+- id: t09
+  split: test
+  trap: customer-identity
+  question: How many customers placed at least one order in 2017?
+  sql: |
+    select count(distinct c.customer_unique_id) as customers
+    from raw.orders o join raw.customers c using (customer_id)
+    where year(o.order_purchase_timestamp) = 2017
+
+- id: t10
+  split: test
+  trap: attribute-join
+  question: Which state placed the most orders in 2017?
+  sql: |
+    select c.customer_state as state, count(*) as orders
+    from raw.orders o join raw.customers c using (customer_id)
+    where year(o.order_purchase_timestamp) = 2017
+    group by 1 order by 2 desc limit 1
+
+- id: t11
+  split: test
+  trap: order-status
+  question: How many orders were delivered in 2017?
+  sql: |
+    select count(*) as delivered_orders
+    from raw.orders
+    where order_status = 'delivered' and year(order_purchase_timestamp) = 2017
+
+- id: t12
+  split: test
+  trap: order-status
+  question: How many orders were canceled in 2018?
+  sql: |
+    select count(*) as canceled_orders
+    from raw.orders
+    where order_status = 'canceled' and year(order_purchase_timestamp) = 2018
+
+- id: t13
+  split: test
+  trap: order-status
+  question: What was the average order value in 2017?
+  sql: |
+    select sum(cast(i.price as decimal(18, 2))) / count(distinct o.order_id) as average_order_value
+    from raw.order_items i join raw.orders o using (order_id)
+    where o.order_status = 'delivered' and year(o.order_purchase_timestamp) = 2017
+
+- id: t14
+  split: test
+  trap: order-status
+  question: What percentage of orders placed in 2017 were canceled?
+  sql: |
+    select count(*) filter (where order_status = 'canceled') / count(*) as cancellation_rate
+    from raw.orders
+    where year(order_purchase_timestamp) = 2017
+
+- id: t15
+  split: test
+  trap: orders-without-items
+  question: How many orders were placed in 2017?
+  sql: |
+    select count(*) as orders
+    from raw.orders
+    where year(order_purchase_timestamp) = 2017
+
+- id: t16
+  split: test
+  trap: late-definition
+  question: What was the late delivery rate in 2017?
+  sql: |
+    select count(*) filter (where cast(order_delivered_customer_date as date) > cast(order_estimated_delivery_date as date))
+           / count(*) as late_delivery_rate
+    from raw.orders
+    where order_status = 'delivered' and order_delivered_customer_date is not null
+      and year(order_purchase_timestamp) = 2017
+
+- id: t17
+  split: test
+  trap: late-definition
+  question: What was the late delivery rate for orders from customers in São Paulo state (SP) placed in 2018?
+  sql: |
+    select count(*) filter (where cast(o.order_delivered_customer_date as date) > cast(o.order_estimated_delivery_date as date))
+           / count(*) as late_delivery_rate
+    from raw.orders o join raw.customers c using (customer_id)
+    where o.order_status = 'delivered' and o.order_delivered_customer_date is not null
+      and year(o.order_purchase_timestamp) = 2018 and c.customer_state = 'SP'
+
+- id: t18
+  split: test
+  trap: late-definition
+  question: On average, how many days did delivery take for orders placed in 2018?
+  sql: |
+    select avg(date_diff('day', cast(order_purchase_timestamp as date), cast(order_delivered_customer_date as date))) as delivery_days
+    from raw.orders
+    where order_status = 'delivered' and order_delivered_customer_date is not null
+      and year(order_purchase_timestamp) = 2018
+
+- id: t19
+  split: test
+  trap: duplicate-reviews
+  question: What was the average review score for orders placed in 2017?
+  sql: |
+    with r as (
+      select order_id, review_score from raw.order_reviews
+      qualify row_number() over (partition by order_id order by review_answer_timestamp desc) = 1
+    )
+    select avg(r.review_score) as average_review_score
+    from r join raw.orders o using (order_id)
+    where year(o.order_purchase_timestamp) = 2017
+
+- id: t20
+  split: test
+  trap: duplicate-reviews
+  question: How do average review scores compare between late and on-time deliveries?
+  sql: |
+    with r as (
+      select order_id, review_score from raw.order_reviews
+      qualify row_number() over (partition by order_id order by review_answer_timestamp desc) = 1
+    )
+    select cast(o.order_delivered_customer_date as date) > cast(o.order_estimated_delivery_date as date) as is_late,
+           avg(r.review_score) as average_review_score
+    from r join raw.orders o using (order_id)
+    where o.order_status = 'delivered' and o.order_delivered_customer_date is not null
+    group by 1 order by 1
+
+- id: t21
+  split: test
+  trap: duplicate-reviews
+  question: How many orders placed in 2018 got a 1-star review?
+  sql: |
+    with r as (
+      select order_id, review_score from raw.order_reviews
+      qualify row_number() over (partition by order_id order by review_answer_timestamp desc) = 1
+    )
+    select count(*) as orders
+    from r join raw.orders o using (order_id)
+    where r.review_score = 1 and year(o.order_purchase_timestamp) = 2018
+
+- id: t22
+  split: test
+  trap: relative-time
+  question: How did revenue last year compare with the year before?
+  sql: |
+    select year(o.order_purchase_timestamp) as year, sum(cast(i.price as decimal(18, 2))) as revenue
+    from raw.order_items i join raw.orders o using (order_id)
+    where o.order_status = 'delivered' and year(o.order_purchase_timestamp) in (2016, 2017)
+    group by 1 order by 1
+
+- id: t23
+  split: test
+  trap: relative-time
+  question: What is our revenue so far this year?
+  sql: |
+    select sum(cast(i.price as decimal(18, 2))) as revenue
+    from raw.order_items i join raw.orders o using (order_id)
+    where o.order_status = 'delivered'
+      and o.order_purchase_timestamp >= '2018-01-01' and o.order_purchase_timestamp <= '2018-10-17 23:59:59'
+
+- id: t24
+  split: test
+  trap: revenue-definition
+  question: How much was paid by boleto for orders placed in 2017?
+  sql: |
+    select sum(cast(p.payment_value as decimal(18, 2))) as payments
+    from raw.order_payments p join raw.orders o using (order_id)
+    where o.order_status = 'delivered' and p.payment_type = 'boleto'
+      and year(o.order_purchase_timestamp) = 2017
+
+- id: u01
+  split: test
+  trap: unanswerable
+  question: What was our profit margin in 2017?
+  reason: No cost data.
+
+- id: u02
+  split: test
+  trap: unanswerable
+  question: How much did we spend on marketing in 2018?
+  reason: No marketing spend data.
+
+- id: u03
+  split: test
+  trap: unanswerable
+  question: What is the average age of our customers?
+  reason: No customer age or birth date.
+
+- id: u04
+  split: test
+  trap: unanswerable
+  question: How many units do we have in stock right now?
+  reason: No inventory data.
+
+- id: u05
+  split: test
+  trap: unanswerable
+  question: What was our product return rate in 2018?
+  reason: No returns data; cancellations are not returns.
+
+- id: u06
+  split: test
+  trap: unanswerable
+  question: What was the website conversion rate last month?
+  reason: No traffic or session data.
+
+- id: d01
+  split: dev
+  trap: revenue-definition
+  question: What was revenue in the first quarter of 2018?
+  sql: |
+    select sum(cast(i.price as decimal(18, 2))) as revenue
+    from raw.order_items i join raw.orders o using (order_id)
+    where o.order_status = 'delivered'
+      and o.order_purchase_timestamp >= '2018-01-01' and o.order_purchase_timestamp < '2018-04-01'
+
+- id: d02
+  split: dev
+  trap: order-status
+  question: How many orders placed in March 2018 were delivered?
+  sql: |
+    select count(*) as delivered_orders
+    from raw.orders
+    where order_status = 'delivered'
+      and order_purchase_timestamp >= '2018-03-01' and order_purchase_timestamp < '2018-04-01'
+
+- id: d03
+  split: dev
+  trap: duplicate-reviews
+  question: What was the average review score for orders placed in 2018?
+  sql: |
+    with r as (
+      select order_id, review_score from raw.order_reviews
+      qualify row_number() over (partition by order_id order by review_answer_timestamp desc) = 1
+    )
+    select avg(r.review_score) as average_review_score
+    from r join raw.orders o using (order_id)
+    where year(o.order_purchase_timestamp) = 2018
+
+- id: d04
+  split: dev
+  trap: late-definition
+  question: What is the overall late delivery rate?
+  sql: |
+    select count(*) filter (where cast(order_delivered_customer_date as date) > cast(order_estimated_delivery_date as date))
+           / count(*) as late_delivery_rate
+    from raw.orders
+    where order_status = 'delivered' and order_delivered_customer_date is not null
+
+- id: d05
+  split: dev
+  trap: revenue-definition
+  question: What was gross merchandise value in 2018?
+  sql: |
+    select sum(cast(i.price as decimal(18, 2)) + cast(i.freight_value as decimal(18, 2))) as gross_merchandise_value
+    from raw.order_items i join raw.orders o using (order_id)
+    where o.order_status = 'delivered' and year(o.order_purchase_timestamp) = 2018
+
+- id: d06
+  split: dev
+  trap: revenue-definition
+  question: How much was paid with vouchers for orders placed in 2018?
+  sql: |
+    select sum(cast(p.payment_value as decimal(18, 2))) as payments
+    from raw.order_payments p join raw.orders o using (order_id)
+    where o.order_status = 'delivered' and p.payment_type = 'voucher'
+      and year(o.order_purchase_timestamp) = 2018
+
+- id: du1
+  split: dev
+  trap: unanswerable
+  question: What is our net promoter score?
+  reason: Reviews are 1–5 stars, not a 0–10 likelihood-to-recommend survey.
+
+- id: du2
+  split: dev
+  trap: unanswerable
+  question: How many employees work at Olist?
+  reason: No company or staffing data.
