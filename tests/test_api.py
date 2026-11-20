@@ -85,6 +85,7 @@ def test_page_and_security_headers(client):
     assert "default-src 'self'" in r.headers["content-security-policy"]
     assert r.headers["x-content-type-options"] == "nosniff"
     assert client.get("/static/app.js").status_code == 200
+    assert client.get("/chat").text == r.text  # the chat view is the same page, opened at /chat
 
 
 def test_ask_returns_answer_and_working(client, monkeypatch):

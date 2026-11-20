@@ -256,6 +256,7 @@ async function run(card) {
 function explore(metric) {
   const card = newCard({ query: { metrics: [metric], group_by: [], filters: [], start: null, end: null, order_by: [], limit: null } });
   select(card);
+  document.body.classList.remove("panel-open");  // on phones, show the result; the sheet reopens via Edit query
   run(card);
 }
 
@@ -397,8 +398,59 @@ function stepText(s) {
   return s.tool;
 }
 
+// ---------- views, theme, demo ----------
+function show(view) {
+  $("welcome").hidden = view !== "welcome";
+  $("chat-view").hidden = view !== "chat";
+  $("back").hidden = view !== "chat";
+  $("open-panel").hidden = view !== "chat";
+  document.title = view === "chat" ? "Ask · Talk to your metrics" : "Talk to your metrics";
+  if (view === "chat") $("question").focus();
+}
+
+function go(path) {
+  if (location.pathname !== path) history.pushState({ app: true }, "", path);
+  show(path === "/chat" ? "chat" : "welcome");
+}
+
+function currentTheme() {
+  const forced = document.documentElement.dataset.theme;
+  return forced || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+}
+
+function labelTheme() {
+  $("theme").setAttribute("aria-label", currentTheme() === "dark" ? "Switch to light mode" : "Switch to dark mode");
+}
+
+function toggleTheme() {
+  const next = currentTheme() === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem("theme", next); } catch { /* not saved; still applies now */ }
+  labelTheme();
+}
+
+function loadDemo() {
+  const figure = $("demo"), src = figure.dataset.src;
+  if (!src) return;  // set once the demo GIF is recorded
+  const img = $("demo-img");
+  img.addEventListener("load", () => { figure.hidden = false; });
+  img.src = src;
+}
+
 // ---------- start ----------
 async function start() {
+  show(location.pathname === "/chat" ? "chat" : "welcome");
+  window.addEventListener("popstate", () => show(location.pathname === "/chat" ? "chat" : "welcome"));
+  $("try").addEventListener("click", (e) => { e.preventDefault(); go("/chat"); });
+  $("home").addEventListener("click", (e) => { e.preventDefault(); go("/"); });
+  $("back").addEventListener("click", () => {
+    if (history.state && history.state.app) history.back(); else go("/");
+  });
+  $("theme").addEventListener("click", toggleTheme);
+  $("open-panel").addEventListener("click", () => document.body.classList.add("panel-open"));
+  labelTheme();
+  loadDemo();
+
   try {
     const data = await api("/metrics");
     state.metrics = data.metrics;

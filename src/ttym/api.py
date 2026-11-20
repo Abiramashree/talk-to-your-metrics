@@ -125,6 +125,7 @@ async def query_error(_, exc: QueryError) -> JSONResponse:
 
 
 @app.get("/", include_in_schema=False)
+@app.get("/chat", include_in_schema=False)
 def page() -> FileResponse:
     return FileResponse(WEB / "index.html")
 
