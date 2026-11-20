@@ -4,3 +4,10 @@ talk_to_your_metrics:
     dev:
       type: duckdb
       path: "{{ env_var('TTYM_DUCKDB', 'data/olist.duckdb') }}"
+    # Used when serving queries: read-only, and DuckDB may not touch files or URLs.
+    serve:
+      type: duckdb
+      path: "{{ env_var('TTYM_DUCKDB', 'data/olist.duckdb') }}"
+      config_options:
+        access_mode: READ_ONLY
+        enable_external_access: false

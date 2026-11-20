@@ -5,6 +5,7 @@ model-paths: [models]
 test-paths: [tests]
 
 flags:
+  send_anonymous_usage_stats: false
   require_yaml_configuration_for_mf_time_spines: true
 
 models:

@@ -21,7 +21,7 @@ rules. This project measures that, on real data, with questions frozen before th
 
 - [x] Semantic model: dbt + MetricFlow on DuckDB, 18 metrics, 30 data tests
 - [x] Benchmark: 30 test and 8 dev questions with correct SQL, committed before the model
-- [ ] MCP server and REST API over one core
+- [x] MCP server and REST API over one core, 40 tests
 - [ ] Agent page where every answer shows its definition, filters and SQL
 - [ ] Results: raw text-to-SQL vs semantic layer vs semantic layer modeled for agents
 - [ ] Hosted demo
@@ -34,6 +34,26 @@ Requires [uv](https://docs.astral.sh/uv/).
 uv sync
 make data    # downloads Olist and loads it into DuckDB
 make build   # builds the dbt models and runs the tests
+make test    # tests the core, MCP server and REST API
+```
+
+## Use
+
+Three tools, the same over MCP and REST: `list_metrics`, `get_dimensions`, `query_metrics`.
+Queries name metrics, dimensions and filters; MetricFlow writes the SQL. The database is opened read-only.
+
+Claude Code:
+
+```bash
+claude mcp add talk-to-your-metrics -- uv run --directory /path/to/talk-to-your-metrics python -m ttym.mcp_server
+```
+
+REST, and MCP over HTTP at `/mcp`:
+
+```bash
+make serve
+curl -s localhost:8000/query -H 'content-type: application/json' \
+  -d '{"metrics": ["revenue"], "group_by": ["metric_time__year"]}'
 ```
 
 ## Data
