@@ -1,5 +1,7 @@
 # talk-to-your-metrics
 
+[![ci](https://github.com/Abiramashree/talk-to-your-metrics/actions/workflows/ci.yml/badge.svg)](https://github.com/Abiramashree/talk-to-your-metrics/actions/workflows/ci.yml)
+
 Ask an AI agent a business question and it writes SQL and returns a number. On real data the
 number is often wrong, not because the SQL fails, but because the question has more than one
 reasonable answer and the agent quietly picks one.
