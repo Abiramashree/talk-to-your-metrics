@@ -5,7 +5,9 @@ Written before any benchmark run. Every setup is scored by the same rules.
 ## Setups
 
 All three use the same model (Groq `openai/gpt-oss-120b`, temperature 0), the same agent loop
-(`src/ttym/agent.py`: a tool call is required on the first turn, at most 8 tool calls), the same
+(`src/ttym/agent.py`: a tool call is required on the first turn; if the provider rejects a tool call
+as invalid, that turn is retried once with no tools offered, so the model replies in text; at most
+8 tool calls), the same
 final-answer format below, and one run per question. Only the tools and what they return differ.
 
 | Setup | Tools | What the model sees |

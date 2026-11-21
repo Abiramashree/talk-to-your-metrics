@@ -1,0 +1,111 @@
+{
+ "question_id": "d01",
+ "setup": "B",
+ "model": "openai/gpt-oss-120b",
+ "fingerprint": "9c5235a39f9007c9",
+ "seconds": 12.8,
+ "final": {
+  "answer": "Revenue in Q1\u202f2018 was $2,704,438.38.",
+  "columns": [
+   "revenue"
+  ],
+  "rows": [
+   [
+    2704438.38
+   ]
+  ]
+ },
+ "trace": [
+  {
+   "tool": "list_metrics",
+   "arguments": {},
+   "result": {
+    "today": "2018-10-17",
+    "metrics": [
+     {
+      "name": "average_delivery_days"
+     },
+     {
+      "name": "average_order_value"
+     },
+     {
+      "name": "average_review_score"
+     },
+     {
+      "name": "canceled_orders"
+     },
+     {
+      "name": "cancellation_rate"
+     },
+     {
+      "name": "customers"
+     },
+     {
+      "name": "delivered_orders"
+     },
+     {
+      "name": "delivered_orders_with_date"
+     },
+     {
+      "name": "freight"
+     },
+     {
+      "name": "gross_merchandise_value"
+     },
+     {
+      "name": "late_delivery_rate"
+     },
+     {
+      "name": "late_orders"
+     },
+     {
+      "name": "new_customers"
+     },
+     {
+      "name": "orders"
+     },
+     {
+      "name": "payments"
+     },
+     {
+      "name": "repeat_customer_rate"
+     },
+     {
+      "name": "repeat_customers"
+     },
+     {
+      "name": "revenue"
+     }
+    ]
+   }
+  },
+  {
+   "tool": "query_metrics",
+   "arguments": {
+    "end": "2018-03-31",
+    "metrics": [
+     "revenue"
+    ],
+    "start": "2018-01-01"
+   },
+   "result": {
+    "columns": [
+     "revenue"
+    ],
+    "rows": [
+     [
+      2704438.38
+     ]
+    ],
+    "truncated": false,
+    "sql": "SELECT\n  SUM(revenue) AS revenue\nFROM (\n  SELECT\n    orders_src_10000.status AS order__status\n    , subq_3.__revenue AS revenue\n  FROM (\n    SELECT\n      order_id AS order\n      , price AS __revenue\n    FROM \"olist\".\"main\".\"fct_order_items\" order_items_src_10000\n    WHERE DATE_TRUNC('day', purchased_at) BETWEEN '2018-01-01' AND '2018-03-31'\n  ) subq_3\n  LEFT OUTER JOIN\n    \"olist\".\"main\".\"fct_orders\" orders_src_10000\n  ON\n    subq_3.order = orders_src_10000.order_id\n) subq_8\nWHERE order__status = 'delivered'"
+   }
+  }
+ ],
+ "usage": {
+  "requests": 3,
+  "prompt_tokens": 2495,
+  "cached_tokens": 512,
+  "completion_tokens": 183
+ }
+}

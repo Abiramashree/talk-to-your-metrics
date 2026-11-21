@@ -1,0 +1,305 @@
+{
+  "split": "dev",
+  "setups": {
+    "A": {
+      "scored": 8,
+      "of": 8,
+      "correct": 4,
+      "accuracy": 0.5,
+      "wilson95": [
+        0.2152,
+        0.7848
+      ],
+      "per_trap": {
+        "duplicate-reviews": {
+          "correct": 1,
+          "n": 1
+        },
+        "late-definition": {
+          "correct": 0,
+          "n": 1
+        },
+        "order-status": {
+          "correct": 1,
+          "n": 1
+        },
+        "revenue-definition": {
+          "correct": 0,
+          "n": 3
+        },
+        "unanswerable": {
+          "correct": 2,
+          "n": 2
+        }
+      },
+      "copy_differs": 0,
+      "copy_differs_and_wrong": 0,
+      "questions": [
+        {
+          "id": "d01",
+          "trap": "revenue-definition",
+          "correct": false,
+          "reason": "expected row [2704438.38] not found",
+          "copy_differs": false,
+          "tokens": 2543
+        },
+        {
+          "id": "d02",
+          "trap": "order-status",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 2415
+        },
+        {
+          "id": "d03",
+          "trap": "duplicate-reviews",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 2384
+        },
+        {
+          "id": "d04",
+          "trap": "late-definition",
+          "correct": false,
+          "reason": "expected row [0.067731] not found",
+          "copy_differs": false,
+          "tokens": 2594
+        },
+        {
+          "id": "d05",
+          "trap": "revenue-definition",
+          "correct": false,
+          "reason": "expected row [8451584.77] not found",
+          "copy_differs": false,
+          "tokens": 2494
+        },
+        {
+          "id": "d06",
+          "trap": "revenue-definition",
+          "correct": false,
+          "reason": "expected row [177632.79] not found",
+          "copy_differs": false,
+          "tokens": 2432
+        },
+        {
+          "id": "du1",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 298
+        },
+        {
+          "id": "du2",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 1724
+        }
+      ]
+    },
+    "B": {
+      "scored": 8,
+      "of": 8,
+      "correct": 8,
+      "accuracy": 1.0,
+      "wilson95": [
+        0.6756,
+        1.0
+      ],
+      "per_trap": {
+        "duplicate-reviews": {
+          "correct": 1,
+          "n": 1
+        },
+        "late-definition": {
+          "correct": 1,
+          "n": 1
+        },
+        "order-status": {
+          "correct": 1,
+          "n": 1
+        },
+        "revenue-definition": {
+          "correct": 3,
+          "n": 3
+        },
+        "unanswerable": {
+          "correct": 2,
+          "n": 2
+        }
+      },
+      "copy_differs": 0,
+      "copy_differs_and_wrong": 0,
+      "questions": [
+        {
+          "id": "d01",
+          "trap": "revenue-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 2678
+        },
+        {
+          "id": "d02",
+          "trap": "order-status",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 3798
+        },
+        {
+          "id": "d03",
+          "trap": "duplicate-reviews",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 3736
+        },
+        {
+          "id": "d04",
+          "trap": "late-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 2647
+        },
+        {
+          "id": "d05",
+          "trap": "revenue-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 2747
+        },
+        {
+          "id": "d06",
+          "trap": "revenue-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 4030
+        },
+        {
+          "id": "du1",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 1137
+        },
+        {
+          "id": "du2",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 1177
+        }
+      ]
+    },
+    "C": {
+      "scored": 8,
+      "of": 8,
+      "correct": 8,
+      "accuracy": 1.0,
+      "wilson95": [
+        0.6756,
+        1.0
+      ],
+      "per_trap": {
+        "duplicate-reviews": {
+          "correct": 1,
+          "n": 1
+        },
+        "late-definition": {
+          "correct": 1,
+          "n": 1
+        },
+        "order-status": {
+          "correct": 1,
+          "n": 1
+        },
+        "revenue-definition": {
+          "correct": 3,
+          "n": 3
+        },
+        "unanswerable": {
+          "correct": 2,
+          "n": 2
+        }
+      },
+      "copy_differs": 0,
+      "copy_differs_and_wrong": 0,
+      "questions": [
+        {
+          "id": "d01",
+          "trap": "revenue-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 4283
+        },
+        {
+          "id": "d02",
+          "trap": "order-status",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 6614
+        },
+        {
+          "id": "d03",
+          "trap": "duplicate-reviews",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 6670
+        },
+        {
+          "id": "d04",
+          "trap": "late-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 4132
+        },
+        {
+          "id": "d05",
+          "trap": "revenue-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 4352
+        },
+        {
+          "id": "d06",
+          "trap": "revenue-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 7032
+        },
+        {
+          "id": "du1",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 1920
+        },
+        {
+          "id": "du2",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 1942
+        }
+      ]
+    }
+  }
+}

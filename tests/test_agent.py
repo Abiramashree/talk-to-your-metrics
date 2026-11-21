@@ -73,3 +73,19 @@ async def test_model_errors_are_not_wrapped(server):
 
     with pytest.raises(QuotaExhausted):
         await ask("Revenue?", server, Failing())
+
+
+async def test_invalid_forced_tool_call_is_retried_without_requirement(server):
+    from ttym.llm import ToolCallRejected
+
+    class Rejecting(FakeLLM):
+        async def chat(self, messages, tools=None, tool_choice=None):
+            if tools:
+                self.sent.append({"tools": True, "tool_choice": tool_choice})
+                raise ToolCallRejected("invented tool 'json'")
+            return await super().chat(messages, tools, tool_choice)
+
+    llm = Rejecting([final({"cannot_answer": "No NPS survey data."})])
+    out = await ask("What is our net promoter score?", server, llm)
+    assert out["final"] == {"cannot_answer": "No NPS survey data."}
+    assert llm.sent[0] == {"tools": True, "tool_choice": "required"} and llm.sent[1]["tools"] is None

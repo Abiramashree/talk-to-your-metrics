@@ -16,7 +16,7 @@ from mcp import Client
 from mcp.server.mcpserver import MCPServer
 
 from ttym.core import TODAY
-from ttym.llm import LLM, load_env
+from ttym.llm import LLM, ToolCallRejected, load_env
 
 MAX_TOOL_CALLS = 8
 
@@ -88,7 +88,14 @@ async def _ask(question: str, server: MCPServer, llm: LLM, system: str) -> dict:
         while True:
             calls_left = MAX_TOOL_CALLS - len(trace)
             # gpt-oss tends to answer from its reasoning without calling tools unless the first turn requires one.
-            message = await llm.chat(messages, tools if calls_left > 0 else None, "required" if not trace else "auto")
+            offered = tools if calls_left > 0 else None
+            try:
+                message = await llm.chat(messages, offered, "required" if not trace else "auto")
+            except ToolCallRejected:
+                # gpt-oss wraps a final answer in a call to a tool that doesn't exist (e.g. "json"), which
+                # the provider rejects (seen on dev questions du1/du2). Retry this turn with no tools,
+                # so the model has to reply with the final JSON as text.
+                message = await llm.chat(messages, None)
             tool_calls = message.get("tool_calls") or []
             if not tool_calls:
                 final = _final(message.get("content", ""))

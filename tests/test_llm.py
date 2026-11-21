@@ -93,3 +93,11 @@ async def test_cached_tokens_are_counted_separately():
     llm = client(httpx.Response(200, json=CACHED))
     await llm.chat([])
     assert llm.usage["prompt_tokens"] == 100 and llm.usage["cached_tokens"] == 80
+
+
+async def test_tool_use_failed_is_its_own_error():
+    from ttym.llm import ToolCallRejected
+
+    body = '{"error":{"code":"tool_use_failed","message":"attempted to call tool json"}}'
+    with pytest.raises(ToolCallRejected):
+        await client(httpx.Response(400, text=body)).chat([])

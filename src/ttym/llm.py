@@ -17,6 +17,10 @@ class LLMError(RuntimeError):
     """The model could not be reached or refused the request."""
 
 
+class ToolCallRejected(LLMError):
+    """The provider rejected the model's tool call as invalid (e.g. a tool that doesn't exist)."""
+
+
 class QuotaExhausted(LLMError):
     """The free limit is used up for now; retrying within this request will not help."""
 
@@ -70,8 +74,11 @@ class LLM:
                     raise QuotaExhausted("the model's free limit is used up for now")
                 await asyncio.sleep(wait)
                 waited += wait
+        if response.status_code == 400 and "tool_use_failed" in response.text:
+            raise ToolCallRejected(f"the model made an invalid tool call: {response.text[:300]}")
         if response.status_code != 200:
-            raise LLMError(f"the model returned {response.status_code}")
+            # the excerpt is for logs and the benchmark runner; the web app shows visitors its own message
+            raise LLMError(f"the model returned {response.status_code}: {response.text[:300]}")
         data = response.json()
         usage = data.get("usage") or {}
         self.usage["requests"] += 1

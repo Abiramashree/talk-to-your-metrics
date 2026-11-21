@@ -1,0 +1,111 @@
+{
+ "question_id": "d05",
+ "setup": "B",
+ "model": "openai/gpt-oss-120b",
+ "fingerprint": "9c5235a39f9007c9",
+ "seconds": 18.0,
+ "final": {
+  "answer": "The gross merchandise value in 2018 was $8,451,584.77.",
+  "columns": [
+   "gross_merchandise_value"
+  ],
+  "rows": [
+   [
+    8451584.77
+   ]
+  ]
+ },
+ "trace": [
+  {
+   "tool": "list_metrics",
+   "arguments": {},
+   "result": {
+    "today": "2018-10-17",
+    "metrics": [
+     {
+      "name": "average_delivery_days"
+     },
+     {
+      "name": "average_order_value"
+     },
+     {
+      "name": "average_review_score"
+     },
+     {
+      "name": "canceled_orders"
+     },
+     {
+      "name": "cancellation_rate"
+     },
+     {
+      "name": "customers"
+     },
+     {
+      "name": "delivered_orders"
+     },
+     {
+      "name": "delivered_orders_with_date"
+     },
+     {
+      "name": "freight"
+     },
+     {
+      "name": "gross_merchandise_value"
+     },
+     {
+      "name": "late_delivery_rate"
+     },
+     {
+      "name": "late_orders"
+     },
+     {
+      "name": "new_customers"
+     },
+     {
+      "name": "orders"
+     },
+     {
+      "name": "payments"
+     },
+     {
+      "name": "repeat_customer_rate"
+     },
+     {
+      "name": "repeat_customers"
+     },
+     {
+      "name": "revenue"
+     }
+    ]
+   }
+  },
+  {
+   "tool": "query_metrics",
+   "arguments": {
+    "end": "2018-12-31",
+    "metrics": [
+     "gross_merchandise_value"
+    ],
+    "start": "2018-01-01"
+   },
+   "result": {
+    "columns": [
+     "gross_merchandise_value"
+    ],
+    "rows": [
+     [
+      8451584.77
+     ]
+    ],
+    "truncated": false,
+    "sql": "SELECT\n  revenue + freight AS gross_merchandise_value\nFROM (\n  SELECT\n    SUM(revenue) AS revenue\n    , SUM(freight) AS freight\n  FROM (\n    SELECT\n      orders_src_10000.status AS order__status\n      , subq_4.__revenue AS revenue\n      , subq_4.__freight AS freight\n    FROM (\n      SELECT\n        order_id AS order\n        , price AS __revenue\n        , freight AS __freight\n      FROM \"olist\".\"main\".\"fct_order_items\" order_items_src_10000\n      WHERE DATE_TRUNC('day', purchased_at) BETWEEN '2018-01-01' AND '2018-12-31'\n    ) subq_4\n    LEFT OUTER JOIN\n      \"olist\".\"main\".\"fct_orders\" orders_src_10000\n    ON\n      subq_4.order = orders_src_10000.order_id\n  ) subq_9\n  WHERE order__status = 'delivered'\n) subq_13"
+   }
+  }
+ ],
+ "usage": {
+  "requests": 3,
+  "prompt_tokens": 2551,
+  "cached_tokens": 1024,
+  "completion_tokens": 196
+ }
+}

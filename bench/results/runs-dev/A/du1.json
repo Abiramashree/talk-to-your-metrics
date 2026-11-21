@@ -1,0 +1,17 @@
+{
+ "question_id": "du1",
+ "setup": "A",
+ "model": "openai/gpt-oss-120b",
+ "fingerprint": "7f059a5cd2095fef",
+ "seconds": 5.1,
+ "final": {
+  "cannot_answer": "The dataset does not contain net promoter score information"
+ },
+ "trace": [],
+ "usage": {
+  "requests": 1,
+  "prompt_tokens": 228,
+  "cached_tokens": 0,
+  "completion_tokens": 70
+ }
+}
