@@ -1,4 +1,4 @@
-"""One OpenAI-compatible chat client for Groq and Gemini."""
+"""Chat client for Groq's OpenAI-compatible API."""
 
 from __future__ import annotations
 
@@ -8,14 +8,17 @@ from dataclasses import dataclass, field
 
 import httpx
 
-PROVIDERS = {
-    "groq": ("https://api.groq.com/openai/v1/chat/completions", "GROQ_API_KEY", "openai/gpt-oss-120b"),
-    "gemini": ("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "GEMINI_API_KEY", "gemini-3.5-flash"),
-}
+URL = "https://api.groq.com/openai/v1/chat/completions"
+MODEL = "openai/gpt-oss-120b"
+WAIT_BUDGET = 45  # seconds we may spend waiting out per-minute limits within one call
 
 
 class LLMError(RuntimeError):
-    pass
+    """The model could not be reached or refused the request."""
+
+
+class QuotaExhausted(LLMError):
+    """The free limit is used up for now; retrying within this request will not help."""
 
 
 def load_env(path) -> None:
@@ -27,36 +30,47 @@ def load_env(path) -> None:
                 os.environ.setdefault(key.strip(), value.strip())
 
 
+def _out_for_the_day(response: httpx.Response) -> bool:
+    """Documented: x-ratelimit-remaining-requests is the per-day request count. The body text naming a
+    per-day limit is an extra, undocumented signal."""
+    text = response.text.lower()
+    return response.headers.get("x-ratelimit-remaining-requests") == "0" or "per day" in text or "(tpd)" in text
+
+
 @dataclass
 class LLM:
-    provider: str = "groq"
-    model: str | None = None
+    model: str = MODEL
     timeout: float = 60
+    transport: httpx.AsyncBaseTransport | None = None  # tests pass a fake network here
     usage: dict = field(default_factory=lambda: {"requests": 0, "prompt_tokens": 0, "completion_tokens": 0})
 
     def __post_init__(self) -> None:
-        if self.provider not in PROVIDERS:
-            raise LLMError(f"unknown provider {self.provider!r}; use one of {sorted(PROVIDERS)}")
-        self.url, key_var, default_model = PROVIDERS[self.provider]
-        self.model = self.model or default_model
-        self._key = os.environ.get(key_var)
+        self._key = os.environ.get("GROQ_API_KEY")
         if not self._key:
-            raise LLMError(f"{key_var} is not set")
+            raise LLMError("GROQ_API_KEY is not set")
 
     async def chat(self, messages: list[dict], tools: list[dict] | None = None, tool_choice: str | None = None) -> dict:
         body: dict = {"model": self.model, "messages": messages, "temperature": 0}
         if tools:
             body["tools"] = tools
             body["tool_choice"] = tool_choice or "auto"
-        async with httpx.AsyncClient(timeout=self.timeout) as http:
-            for attempt in range(4):
-                response = await http.post(self.url, json=body, headers={"Authorization": f"Bearer {self._key}"})
-                if response.status_code == 429 and attempt < 3:  # per-minute limits: wait as told, then retry
-                    await asyncio.sleep(min(float(response.headers.get("retry-after", 10)), 60))
-                    continue
-                break
+        waited = 0.0
+        async with httpx.AsyncClient(timeout=self.timeout, transport=self.transport) as http:
+            while True:
+                try:
+                    response = await http.post(URL, json=body, headers={"Authorization": f"Bearer {self._key}"})
+                except httpx.HTTPError as e:  # connection refused, DNS, timeouts
+                    raise LLMError(f"could not reach the model: {type(e).__name__}") from None
+                if response.status_code != 429:
+                    break
+                wait = float(response.headers.get("retry-after", 10))
+                # waiting longer than the budget won't help this visitor; neither will waiting out a daily limit
+                if _out_for_the_day(response) or waited + wait > WAIT_BUDGET:
+                    raise QuotaExhausted("the model's free limit is used up for now")
+                await asyncio.sleep(wait)
+                waited += wait
         if response.status_code != 200:
-            raise LLMError(f"{self.provider} returned {response.status_code}: {response.text[:300]}")
+            raise LLMError(f"the model returned {response.status_code}")
         data = response.json()
         usage = data.get("usage") or {}
         self.usage["requests"] += 1

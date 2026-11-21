@@ -96,7 +96,7 @@ def test_ask_returns_answer_and_working(client, monkeypatch):
         call("query_metrics", {"metrics": ["revenue"], "filters": [{"dimension": "order__state", "operator": "=", "value": "SP"}]}),
         final({"answer": "x", "columns": ["revenue"], "rows": [[1.0]]}),
     ]
-    monkeypatch.setattr(api, "LLM", lambda provider: FakeLLM(list(script)))
+    monkeypatch.setattr(api, "LLM", lambda: FakeLLM(list(script)))
     monkeypatch.setattr(api, "limiter", api.Limiter(per_ip=10, per_day=10))
     r = client.post("/ask", json={"question": "Revenue in SP?"})
     assert r.status_code == 200
@@ -110,7 +110,7 @@ def test_ask_limits_and_validation(client, monkeypatch):
     from fakes import FakeLLM, final
     import ttym.api as api
 
-    monkeypatch.setattr(api, "LLM", lambda provider: FakeLLM([final({"cannot_answer": "no"})] * 5))
+    monkeypatch.setattr(api, "LLM", lambda: FakeLLM([final({"cannot_answer": "no"})] * 5))
     monkeypatch.setattr(api, "limiter", api.Limiter(per_ip=2, per_day=100))
     assert client.post("/ask", json={"question": "x" * 301}).status_code == 422
     codes = [client.post("/ask", json={"question": "Profit?"}).status_code for _ in range(3)]
@@ -129,7 +129,7 @@ def test_security_hardening(client, monkeypatch):
     assert r.status_code == 400 and r.headers["cache-control"] == "no-store"
     assert r.headers["x-frame-options"] == "DENY" and "max-age" in r.headers["strict-transport-security"]
 
-    monkeypatch.setattr(api, "LLM", lambda provider: FakeLLM([final({"cannot_answer": "no"})] * 3))
+    monkeypatch.setattr(api, "LLM", lambda: FakeLLM([final({"cannot_answer": "no"})] * 3))
     monkeypatch.setattr(api, "limiter", api.Limiter(per_ip=10, per_day=10))
     assert client.post("/ask", json={"question": "Profit?"}, headers={"origin": "https://evil.example"}).status_code == 403
     assert client.post("/ask", json={"question": "Profit?"}, headers={"origin": "http://testserver"}).status_code == 200
@@ -141,7 +141,7 @@ def test_page_table_uses_query_result_not_model_copy(client, monkeypatch):
 
     script = [call("query_metrics", {"metrics": ["repeat_customers"]}),
               final({"answer": "x", "columns": ["repeat_customers"], "rows": [[999999]]})]  # model misreports
-    monkeypatch.setattr(api, "LLM", lambda provider: FakeLLM(list(script)))
+    monkeypatch.setattr(api, "LLM", lambda: FakeLLM(list(script)))
     monkeypatch.setattr(api, "limiter", api.Limiter(per_ip=10, per_day=10))
     data = client.post("/ask", json={"question": "Repeat customers?"}).json()
     assert data["working"]["rows"] == [[2997]]
@@ -161,3 +161,31 @@ def test_playground_query_limit(client, monkeypatch):
     monkeypatch.setattr(api, "query_limiter", api.Limiter(per_ip=2, per_day=100))
     codes = [client.post("/query", json={"metrics": ["orders"]}).status_code for _ in range(3)]
     assert codes == [200, 200, 429]
+
+
+@pytest.mark.parametrize("error, status, text", [
+    ("quota", 503, "free LLM limit is used up"),
+    ("network", 503, "can't be reached"),
+])
+def test_ask_failures_are_clear(client, monkeypatch, error, status, text):
+    import ttym.api as api
+    from ttym.llm import LLMError, QuotaExhausted
+
+    class Failing:
+        usage = {}
+
+        async def chat(self, *a, **k):
+            raise QuotaExhausted("x") if error == "quota" else LLMError("could not reach the model: ConnectError")
+
+    monkeypatch.setattr(api, "LLM", lambda: Failing())
+    monkeypatch.setattr(api, "limiter", api.Limiter(per_ip=10, per_day=10))
+    r = client.post("/ask", json={"question": "Revenue?"})
+    assert r.status_code == status and text in r.json()["error"]
+
+
+def test_daily_cap_message(client, monkeypatch):
+    import ttym.api as api
+
+    monkeypatch.setattr(api, "limiter", api.Limiter(per_ip=10, per_day=0))
+    r = client.post("/ask", json={"question": "Revenue?"})
+    assert r.status_code == 429 and "for today" in r.json()["error"]

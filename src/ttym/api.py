@@ -20,17 +20,18 @@ from pydantic import BaseModel, Field
 
 from ttym.agent import ask
 from ttym.core import Filter, Query, QueryError, SemanticLayer
-from ttym.llm import LLM, LLMError, load_env
+from ttym.llm import LLM, LLMError, QuotaExhausted, load_env
 from ttym.mcp_server import FilterIn, Name, build_server
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 WEB = ROOT / "web"
 load_env(ROOT / ".env")
 
-PROVIDER = os.environ.get("TTYM_PROVIDER", "groq")
 ASK_PER_IP = int(os.environ.get("TTYM_ASK_PER_IP", "10"))  # per 10 minutes
-ASK_PER_DAY = int(os.environ.get("TTYM_ASK_PER_DAY", "300"))  # whole site
+ASK_PER_DAY = int(os.environ.get("TTYM_ASK_PER_DAY", "40"))  # whole site; Groq free tier ≈ 46 questions/day
 ASK_TIMEOUT = 90
+DAILY_CAP_MESSAGE = "The free LLM limit for today is used up, sorry. The query panel still works."
+QUOTA_MESSAGE = "The free LLM limit is used up for now, sorry. Try again later; the query panel still works."
 
 layer = SemanticLayer(bare=os.environ.get("TTYM_BARE") == "1")
 mcp = build_server(layer)
@@ -86,7 +87,7 @@ class Limiter:
         if time.strftime("%Y-%m-%d") != self.day:
             self.day, self.today_count = time.strftime("%Y-%m-%d"), 0
         if self.today_count >= self.per_day:
-            return "The daily question limit for this demo has been reached. Try again tomorrow."
+            return DAILY_CAP_MESSAGE
         hits = self.recent[client]
         while hits and now - hits[0] > 600:
             hits.popleft()
@@ -167,12 +168,14 @@ async def ask_question(body: AskIn, request: Request) -> JSONResponse:
     if refused:
         return JSONResponse(status_code=429, content={"error": refused})
     try:
-        llm = LLM(PROVIDER)
+        llm = LLM()
         out = await asyncio.wait_for(ask(body.question.strip(), mcp, llm), timeout=ASK_TIMEOUT)
+    except QuotaExhausted:
+        return JSONResponse(status_code=503, content={"error": QUOTA_MESSAGE})
     except LLMError:
-        return JSONResponse(status_code=503, content={"error": "The assistant is unavailable right now."})
+        return JSONResponse(status_code=503, content={"error": "The assistant can't be reached right now. The query panel still works."})
     except TimeoutError:
-        return JSONResponse(status_code=504, content={"error": "That took too long. Try a simpler question."})
+        return JSONResponse(status_code=504, content={"error": "The assistant took too long to answer. Try again in a minute."})
     if out.get("final") is None:
         return JSONResponse(status_code=502, content={"error": "The assistant did not produce an answer."})
     return JSONResponse({"final": out["final"], "working": working(out["trace"])})

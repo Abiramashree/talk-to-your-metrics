@@ -144,10 +144,13 @@ function renderCard(card) {
   } else if (card.failed) {
     reply.append(el("p", { class: "error", text: card.failed }));
   } else if (card.cannot) {
-    reply.append(el("p", { class: "muted", text: card.cannot }));
+    // A reason is shown only when it carries no numbers: those would be unchecked model text.
+    reply.append(el("p", { class: "muted", text: /\d/.test(card.cannot) ? "This can't be answered from the metrics in this data." : card.cannot }));
   } else {
-    if (card.answer && !card.edited) reply.append(el("p", { class: "answer", text: card.answer }));
-    if (card.edited || !card.answer) reply.append(el("p", { class: "caption", text: summary(card.query) }));
+    // The title is built from the query itself; the model's own sentence is never shown,
+    // so no number on the page comes from anywhere but the query result.
+    reply.append(el("p", { class: "title", text: summary(card.query) }));
+    if (card.edited) reply.append(el("p", { class: "caption", text: "Edited" }));
     reply.append(renderResult(card));
     const actions = el("div", { class: "actions" });
     actions.append(el("button", { class: "link", type: "button", text: "Edit query", onclick: (e) => { e.stopPropagation(); select(card, true); } }));
@@ -168,9 +171,15 @@ function summary(q) {
   if (!q) return "";
   const bits = [q.metrics.map(label).join(", ")];
   if (q.group_by.length) bits.push(`by ${q.group_by.map(label).join(", ")}`);
-  if (q.start || q.end) bits.push(`${q.start || PERIOD.min} to ${q.end || PERIOD.max}`);
+  if (q.start || q.end) bits.push(period(q.start, q.end));
   for (const f of q.filters) bits.push(`${label(f.dimension)} ${f.operator} ${Array.isArray(f.value) ? f.value.join(", ") : f.value}`);
   return bits.join(" · ");
+}
+
+function period(start, end) {
+  const s = start || PERIOD.min, e = end || PERIOD.max;
+  if (s.slice(0, 4) === e.slice(0, 4) && s.endsWith("-01-01") && e.endsWith("-12-31")) return s.slice(0, 4);
+  return `${s} to ${e}`;
 }
 
 function select(card, open = false) {
@@ -203,14 +212,13 @@ async function ask(question) {
     if (data.final.cannot_answer) {
       card.cannot = data.final.cannot_answer;
     } else if (w && w.query) {
-      card.answer = data.final.answer;
       card.query = w.query;
       // the table and chart come from the query result itself, never the model's copy
       card.result = { columns: w.columns, rows: w.rows, truncated: w.truncated, sql: w.sql, definitions: w.definitions };
       card.original = structuredClone(w.query);
       card.originalResult = card.result;
     } else {
-      card.cannot = data.final.answer || "No query was run for this question.";
+      card.cannot = "No query was run for this question.";
     }
   } catch (err) {
     card.thinking = false;

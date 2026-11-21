@@ -106,8 +106,8 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
 .reply { border: 1px solid transparent; border-radius: var(--radius); padding: 4px 6px 6px; margin: 0 -6px; cursor: pointer; }
 .reply:hover { background: var(--surface); }
 .reply.selected { border-color: var(--line); background: var(--surface); }
-.answer { font-size: 17px; margin: 0 0 12px; }
-.caption { color: var(--fg-2); font-size: 13px; margin: 0 0 12px; }
+.title { font-size: 16px; font-weight: 600; margin: 0 0 10px; }
+.caption { color: var(--muted); font-size: 12.5px; margin: -6px 0 10px; }
 .muted { color: var(--muted); margin: 0; }
 .small { font-size: 13px; }
 .error { color: var(--error); margin: 0; }

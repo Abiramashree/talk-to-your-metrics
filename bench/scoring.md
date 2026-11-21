@@ -33,12 +33,22 @@ An answer is correct when every expected row is matched and no unexpected row re
 
 ## Unanswerable questions
 
-Correct only when the answer is `cannot_answer` and contains no number presented as the answer.
-Answering an answerable question with `cannot_answer` is wrong.
+Mechanical rule, no judgment:
+
+- An unanswerable question is correct when the final answer is `{"cannot_answer": ...}` and has no
+  `rows`. The text of the reason is not scored, even if it mentions other figures (for example
+  "returns aren't recorded; the cancellation rate was 0.6%" is correct).
+- Any final answer with `rows` is wrong for an unanswerable question, whatever the rows contain.
+- An answerable question answered with `cannot_answer` is wrong.
 
 ## Reporting
 
 - Accuracy per setup over all 30 test questions, with a Wilson 95% interval.
 - Accuracy per trap (see `trap` in `questions.yaml`), so a difference is visible where it happens.
 - Every raw answer and every tool call is published next to the score.
+- **Copy fidelity**, per setup: for each answered question, whether the rows in the final answer
+  match the rows of the last successful query result (setups B and C) or of the last successfully
+  executed SQL (setup A), under the same matching rules as above. Reported as a count of answers
+  where they differ, and how many of those were scored wrong because of it. This separates
+  "the data was right but the model copied it wrong" from "the query itself was wrong".
 - Repeated runs at temperature 0 are not independent; intervals are reported per question set, not per run.

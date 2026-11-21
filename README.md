@@ -57,7 +57,7 @@ Claude Code:
 claude mcp add talk-to-your-metrics -- uv run --directory /path/to/talk-to-your-metrics python -m ttym.mcp_server
 ```
 
-The page at `/`, REST, and MCP over HTTP at `/mcp` (the page needs `GROQ_API_KEY` or `GEMINI_API_KEY` in `.env`):
+The page at `/`, REST, and MCP over HTTP at `/mcp` (asking questions needs `GROQ_API_KEY` in `.env`; the query panel works without it):
 
 ```bash
 make serve   # http://localhost:8000

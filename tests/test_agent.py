@@ -60,3 +60,16 @@ async def test_tool_call_limit(server):
 def test_inline_refs_removes_defs():
     schema = {"$defs": {"F": {"type": "object"}}, "properties": {"f": {"items": {"$ref": "#/$defs/F"}}}}
     assert _inline_refs(schema) == {"properties": {"f": {"items": {"type": "object"}}}}
+
+
+async def test_model_errors_are_not_wrapped(server):
+    from ttym.llm import QuotaExhausted
+
+    class Failing:
+        usage = {}
+
+        async def chat(self, *a, **k):
+            raise QuotaExhausted("used up")
+
+    with pytest.raises(QuotaExhausted):
+        await ask("Revenue?", server, Failing())

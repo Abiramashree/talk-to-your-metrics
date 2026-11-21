@@ -1,6 +1,6 @@
 """The agent: an LLM that answers questions only through our MCP server.
 
-    python -m ttym.agent "What was revenue in the first quarter of 2018?" --provider groq
+    python -m ttym.agent "What was revenue in the first quarter of 2018?"
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ When you are done, reply with JSON only, no other text:
 
 
 def _inline_refs(schema: dict) -> dict:
-    """Some providers reject $ref/$defs in tool schemas; inline them."""
+    """Inline $ref/$defs so the tool schema is self-contained for the model API."""
     defs = schema.get("$defs", {})
 
     def resolve(node: Any) -> Any:
@@ -59,6 +59,23 @@ def _final(content: str) -> dict | None:
 
 async def ask(question: str, server: MCPServer, llm: LLM) -> dict:
     """Answer one question. Returns the final answer, every tool call, and token usage."""
+    try:
+        return await _ask(question, server, llm)
+    except BaseExceptionGroup as group:
+        # The MCP client's task group wraps errors raised inside it; surface the model error itself
+        # so callers can handle it (quota, network) instead of seeing an opaque group.
+        leaf = _first_leaf(group)
+        raise leaf from None
+
+
+def _first_leaf(group: BaseExceptionGroup) -> BaseException:
+    error: BaseException = group
+    while isinstance(error, BaseExceptionGroup):
+        error = error.exceptions[0]
+    return error
+
+
+async def _ask(question: str, server: MCPServer, llm: LLM) -> dict:
     trace: list[dict] = []
     async with Client(server) as client:
         tools = [
@@ -109,11 +126,10 @@ def main() -> None:
 
     parser = argparse.ArgumentParser()
     parser.add_argument("question")
-    parser.add_argument("--provider", default="groq")
     parser.add_argument("--bare", action="store_true")
     args = parser.parse_args()
     load_env(pathlib.Path(__file__).resolve().parents[2] / ".env")
-    out = asyncio.run(ask(args.question, build_server(SemanticLayer(bare=args.bare)), LLM(args.provider)))
+    out = asyncio.run(ask(args.question, build_server(SemanticLayer(bare=args.bare)), LLM()))
     print(json.dumps(out, indent=2, default=str))
 
 
