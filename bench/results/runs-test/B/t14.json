@@ -1,0 +1,111 @@
+{
+ "question_id": "t14",
+ "setup": "B",
+ "model": "openai/gpt-oss-120b",
+ "fingerprint": "9c5235a39f9007c9",
+ "seconds": 13.4,
+ "final": {
+  "answer": "0.59% of orders placed in 2017 were canceled.",
+  "columns": [
+   "cancellation_rate"
+  ],
+  "rows": [
+   [
+    0.005875701203964435
+   ]
+  ]
+ },
+ "trace": [
+  {
+   "tool": "list_metrics",
+   "arguments": {},
+   "result": {
+    "today": "2018-10-17",
+    "metrics": [
+     {
+      "name": "average_delivery_days"
+     },
+     {
+      "name": "average_order_value"
+     },
+     {
+      "name": "average_review_score"
+     },
+     {
+      "name": "canceled_orders"
+     },
+     {
+      "name": "cancellation_rate"
+     },
+     {
+      "name": "customers"
+     },
+     {
+      "name": "delivered_orders"
+     },
+     {
+      "name": "delivered_orders_with_date"
+     },
+     {
+      "name": "freight"
+     },
+     {
+      "name": "gross_merchandise_value"
+     },
+     {
+      "name": "late_delivery_rate"
+     },
+     {
+      "name": "late_orders"
+     },
+     {
+      "name": "new_customers"
+     },
+     {
+      "name": "orders"
+     },
+     {
+      "name": "payments"
+     },
+     {
+      "name": "repeat_customer_rate"
+     },
+     {
+      "name": "repeat_customers"
+     },
+     {
+      "name": "revenue"
+     }
+    ]
+   }
+  },
+  {
+   "tool": "query_metrics",
+   "arguments": {
+    "end": "2017-12-31",
+    "metrics": [
+     "cancellation_rate"
+    ],
+    "start": "2017-01-01"
+   },
+   "result": {
+    "columns": [
+     "cancellation_rate"
+    ],
+    "rows": [
+     [
+      0.005875701203964435
+     ]
+    ],
+    "truncated": false,
+    "sql": "WITH sma_10003_cte AS (\n  SELECT\n    DATE_TRUNC('day', purchased_at) AS metric_time__day\n    , status AS order__status\n    , CASE WHEN order_id IS NOT NULL THEN 1 ELSE 0 END AS __orders\n    , CASE WHEN order_id IS NOT NULL THEN 1 ELSE 0 END AS __canceled_orders\n  FROM \"olist\".\"main\".\"fct_orders\" orders_src_10000\n)\n\nSELECT\n  CAST(MAX(subq_9.canceled_orders) AS DOUBLE) / CAST(NULLIF(MAX(subq_15.orders), 0) AS DOUBLE) AS cancellation_rate\nFROM (\n  SELECT\n    SUM(canceled_orders) AS canceled_orders\n  FROM (\n    SELECT\n      order__status\n      , __canceled_orders AS canceled_orders\n    FROM sma_10003_cte\n    WHERE metric_time__day BETWEEN '2017-01-01' AND '2017-12-31'\n  ) subq_5\n  WHERE order__status = 'canceled'\n) subq_9\nCROSS JOIN (\n  SELECT\n    SUM(__orders) AS orders\n  FROM sma_10003_cte\n  WHERE metric_time__day BETWEEN '2017-01-01' AND '2017-12-31'\n) subq_15"
+   }
+  }
+ ],
+ "usage": {
+  "requests": 3,
+  "prompt_tokens": 2613,
+  "cached_tokens": 1024,
+  "completion_tokens": 229
+ }
+}

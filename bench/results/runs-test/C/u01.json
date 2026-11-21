@@ -1,0 +1,198 @@
+{
+ "question_id": "u01",
+ "setup": "C",
+ "model": "openai/gpt-oss-120b",
+ "fingerprint": "3c1b48644888d99a",
+ "seconds": 20.2,
+ "final": {
+  "cannot_answer": "Profit margin metric is not available in the dataset"
+ },
+ "trace": [
+  {
+   "tool": "list_metrics",
+   "arguments": {},
+   "result": {
+    "today": "2018-10-17",
+    "metrics": [
+     {
+      "name": "average_delivery_days",
+      "label": "Average delivery days",
+      "description": "Calendar days from purchase date to delivery date, averaged over delivered orders with a delivery date.",
+      "synonyms": [
+       "delivery time",
+       "days to deliver",
+       "shipping time"
+      ]
+     },
+     {
+      "name": "average_order_value",
+      "label": "Average order value",
+      "description": "Revenue divided by delivered orders. Excludes freight.",
+      "synonyms": [
+       "AOV",
+       "average basket",
+       "average ticket"
+      ]
+     },
+     {
+      "name": "average_review_score",
+      "label": "Average review score",
+      "description": "Average stars (1\u20135) over orders with a review, using the latest review per order.",
+      "synonyms": [
+       "rating",
+       "customer satisfaction",
+       "review stars",
+       "CSAT"
+      ]
+     },
+     {
+      "name": "canceled_orders",
+      "label": "Canceled orders",
+      "description": "Orders with status canceled.",
+      "synonyms": [
+       "cancellations",
+       "cancelled orders"
+      ]
+     },
+     {
+      "name": "cancellation_rate",
+      "label": "Cancellation rate",
+      "description": "Canceled orders divided by orders placed. A fraction between 0 and 1.",
+      "synonyms": [
+       "cancel rate",
+       "share of orders canceled"
+      ]
+     },
+     {
+      "name": "customers",
+      "label": "Customers",
+      "description": "Distinct people with at least one order in the period, counted by customer_unique_id.",
+      "synonyms": [
+       "unique customers",
+       "buyers",
+       "shoppers"
+      ]
+     },
+     {
+      "name": "delivered_orders",
+      "label": "Delivered orders",
+      "description": "Orders with status delivered.",
+      "synonyms": [
+       "completed orders",
+       "fulfilled orders"
+      ]
+     },
+     {
+      "name": "delivered_orders_with_date",
+      "label": "Delivered orders with a delivery date",
+      "description": "Delivered orders that have a recorded delivery date (8 delivered orders lack one)."
+     },
+     {
+      "name": "freight",
+      "label": "Freight",
+      "description": "Freight charged on items of delivered orders.",
+      "synonyms": [
+       "shipping",
+       "shipping fees",
+       "delivery charges"
+      ]
+     },
+     {
+      "name": "gross_merchandise_value",
+      "label": "Gross merchandise value",
+      "description": "Revenue plus freight on delivered orders.",
+      "synonyms": [
+       "GMV",
+       "revenue including freight",
+       "total order value"
+      ]
+     },
+     {
+      "name": "late_delivery_rate",
+      "label": "Late delivery rate",
+      "description": "Late orders divided by delivered orders with a delivery date. Late means delivered after the estimated date, compared as dates. A fraction between 0 and 1.",
+      "synonyms": [
+       "late rate",
+       "share of late deliveries",
+       "on-time miss rate"
+      ]
+     },
+     {
+      "name": "late_orders",
+      "label": "Late orders",
+      "description": "Delivered orders that arrived after the estimated date, compared as dates.",
+      "synonyms": [
+       "late deliveries",
+       "delayed orders"
+      ]
+     },
+     {
+      "name": "new_customers",
+      "label": "New customers",
+      "description": "People whose first order falls in the period. Over all time, every customer.",
+      "synonyms": [
+       "first-time customers",
+       "customer acquisition",
+       "newly acquired customers"
+      ]
+     },
+     {
+      "name": "orders",
+      "label": "Orders",
+      "description": "Orders placed, any status. Includes canceled and undelivered orders.",
+      "synonyms": [
+       "orders placed",
+       "number of orders",
+       "order volume"
+      ]
+     },
+     {
+      "name": "payments",
+      "label": "Payments",
+      "description": "Money paid for delivered orders, including installment interest and vouchers. Differs from revenue + freight.",
+      "synonyms": [
+       "payments received",
+       "amount paid",
+       "cash collected"
+      ]
+     },
+     {
+      "name": "repeat_customer_rate",
+      "label": "Repeat customer rate",
+      "description": "Repeat customers divided by all customers, all time. A fraction between 0 and 1. Cannot be limited to a date range.",
+      "synonyms": [
+       "repeat purchase rate",
+       "share of repeat customers",
+       "retention"
+      ]
+     },
+     {
+      "name": "repeat_customers",
+      "label": "Repeat customers",
+      "description": "People with two or more orders, all time. Cannot be limited to a date range.",
+      "synonyms": [
+       "returning customers",
+       "customers who ordered more than once"
+      ]
+     },
+     {
+      "name": "revenue",
+      "label": "Revenue",
+      "description": "Sum of item prices on delivered orders. Excludes freight. The default meaning of \"revenue\" and \"sales\".",
+      "synonyms": [
+       "sales",
+       "net sales",
+       "item revenue"
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "usage": {
+  "requests": 2,
+  "prompt_tokens": 1822,
+  "cached_tokens": 512,
+  "completion_tokens": 125
+ }
+}

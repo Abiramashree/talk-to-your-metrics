@@ -89,3 +89,14 @@ async def test_invalid_forced_tool_call_is_retried_without_requirement(server):
     out = await ask("What is our net promoter score?", server, llm)
     assert out["final"] == {"cannot_answer": "No NPS survey data."}
     assert llm.sent[0] == {"tools": True, "tool_choice": "required"} and llm.sent[1]["tools"] is None
+
+
+async def test_tool_call_after_no_tools_retry_ends_the_run(server):
+    from ttym.llm import ToolCallRejected
+
+    class AlwaysRejecting(FakeLLM):
+        async def chat(self, *a, **k):
+            raise ToolCallRejected("Tool choice is none, but model called a tool")
+
+    out = await ask("Revenue?", server, AlwaysRejecting([]))
+    assert out["final"] is None and "invalid tool call" in out["error"]

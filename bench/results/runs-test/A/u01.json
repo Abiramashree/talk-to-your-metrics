@@ -1,0 +1,17 @@
+{
+ "question_id": "u01",
+ "setup": "A",
+ "model": "openai/gpt-oss-120b",
+ "fingerprint": "7f059a5cd2095fef",
+ "seconds": null,
+ "final": null,
+ "trace": [],
+ "usage": {
+  "requests": 0,
+  "prompt_tokens": 0,
+  "cached_tokens": 0,
+  "completion_tokens": 0
+ },
+ "error": "invalid tool call after the no-tools retry: the model made an invalid tool call: {\"error\":{\"message\":\"Tool choice is none, but model called a tool\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"run_sql\\\", \\\"arguments\\\": {\\n  \\\"sql\\\": \\\"WITH orders_2017 AS (\\\\n    SELECT o.order_id\\\\n    FROM raw.orders o\\\\n    WHERE o.order_purchase_ti",
+ "recorded_from_log": "first attempt; the run raised before saving, so its trace was not captured"
+}

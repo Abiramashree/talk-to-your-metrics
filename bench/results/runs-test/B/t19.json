@@ -1,0 +1,148 @@
+{
+ "question_id": "t19",
+ "setup": "B",
+ "model": "openai/gpt-oss-120b",
+ "fingerprint": "9c5235a39f9007c9",
+ "seconds": 8.8,
+ "final": {
+  "answer": "The average review score for orders placed in 2017 was 4.087131547166436.",
+  "columns": [
+   "average_review_score"
+  ],
+  "rows": [
+   [
+    4.087131547166436
+   ]
+  ]
+ },
+ "trace": [
+  {
+   "tool": "list_metrics",
+   "arguments": {},
+   "result": {
+    "today": "2018-10-17",
+    "metrics": [
+     {
+      "name": "average_delivery_days"
+     },
+     {
+      "name": "average_order_value"
+     },
+     {
+      "name": "average_review_score"
+     },
+     {
+      "name": "canceled_orders"
+     },
+     {
+      "name": "cancellation_rate"
+     },
+     {
+      "name": "customers"
+     },
+     {
+      "name": "delivered_orders"
+     },
+     {
+      "name": "delivered_orders_with_date"
+     },
+     {
+      "name": "freight"
+     },
+     {
+      "name": "gross_merchandise_value"
+     },
+     {
+      "name": "late_delivery_rate"
+     },
+     {
+      "name": "late_orders"
+     },
+     {
+      "name": "new_customers"
+     },
+     {
+      "name": "orders"
+     },
+     {
+      "name": "payments"
+     },
+     {
+      "name": "repeat_customer_rate"
+     },
+     {
+      "name": "repeat_customers"
+     },
+     {
+      "name": "revenue"
+     }
+    ]
+   }
+  },
+  {
+   "tool": "get_dimensions",
+   "arguments": {
+    "metrics": [
+     "average_review_score"
+    ]
+   },
+   "result": {
+    "metrics": [
+     "average_review_score"
+    ],
+    "time": {
+     "name": "metric_time",
+     "grains": [
+      "day",
+      "week",
+      "month",
+      "quarter",
+      "year"
+     ]
+    },
+    "dimensions": [
+     {
+      "name": "order__is_late"
+     },
+     {
+      "name": "order__review_score"
+     },
+     {
+      "name": "order__state"
+     },
+     {
+      "name": "order__status"
+     }
+    ]
+   }
+  },
+  {
+   "tool": "query_metrics",
+   "arguments": {
+    "end": "2017-12-31",
+    "metrics": [
+     "average_review_score"
+    ],
+    "start": "2017-01-01"
+   },
+   "result": {
+    "columns": [
+     "average_review_score"
+    ],
+    "rows": [
+     [
+      4.087131547166436
+     ]
+    ],
+    "truncated": false,
+    "sql": "SELECT\n  AVG(review_score) AS average_review_score\nFROM \"olist\".\"main\".\"fct_orders\" orders_src_10000\nWHERE DATE_TRUNC('day', purchased_at) BETWEEN '2017-01-01' AND '2017-12-31'"
+   }
+  }
+ ],
+ "usage": {
+  "requests": 4,
+  "prompt_tokens": 3404,
+  "cached_tokens": 2048,
+  "completion_tokens": 413
+ }
+}

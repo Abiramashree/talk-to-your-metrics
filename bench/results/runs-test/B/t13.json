@@ -1,0 +1,111 @@
+{
+ "question_id": "t13",
+ "setup": "B",
+ "model": "openai/gpt-oss-120b",
+ "fingerprint": "9c5235a39f9007c9",
+ "seconds": 7.8,
+ "final": {
+  "answer": "The average order value in 2017 was 137.30547135488624.",
+  "columns": [
+   "average_order_value"
+  ],
+  "rows": [
+   [
+    137.30547135488624
+   ]
+  ]
+ },
+ "trace": [
+  {
+   "tool": "list_metrics",
+   "arguments": {},
+   "result": {
+    "today": "2018-10-17",
+    "metrics": [
+     {
+      "name": "average_delivery_days"
+     },
+     {
+      "name": "average_order_value"
+     },
+     {
+      "name": "average_review_score"
+     },
+     {
+      "name": "canceled_orders"
+     },
+     {
+      "name": "cancellation_rate"
+     },
+     {
+      "name": "customers"
+     },
+     {
+      "name": "delivered_orders"
+     },
+     {
+      "name": "delivered_orders_with_date"
+     },
+     {
+      "name": "freight"
+     },
+     {
+      "name": "gross_merchandise_value"
+     },
+     {
+      "name": "late_delivery_rate"
+     },
+     {
+      "name": "late_orders"
+     },
+     {
+      "name": "new_customers"
+     },
+     {
+      "name": "orders"
+     },
+     {
+      "name": "payments"
+     },
+     {
+      "name": "repeat_customer_rate"
+     },
+     {
+      "name": "repeat_customers"
+     },
+     {
+      "name": "revenue"
+     }
+    ]
+   }
+  },
+  {
+   "tool": "query_metrics",
+   "arguments": {
+    "end": "2017-12-31",
+    "metrics": [
+     "average_order_value"
+    ],
+    "start": "2017-01-01"
+   },
+   "result": {
+    "columns": [
+     "average_order_value"
+    ],
+    "rows": [
+     [
+      137.30547135488624
+     ]
+    ],
+    "truncated": false,
+    "sql": "WITH sma_10003_cte AS (\n  SELECT\n    DATE_TRUNC('day', purchased_at) AS metric_time__day\n    , order_id AS order\n    , status\n    , status AS order__status\n    , CASE WHEN order_id IS NOT NULL THEN 1 ELSE 0 END AS __delivered_orders\n  FROM \"olist\".\"main\".\"fct_orders\" orders_src_10000\n)\n\nSELECT\n  CAST(MAX(subq_11.revenue) AS DOUBLE) / CAST(NULLIF(MAX(subq_18.delivered_orders), 0) AS DOUBLE) AS average_order_value\nFROM (\n  SELECT\n    SUM(revenue) AS revenue\n  FROM (\n    SELECT\n      sma_10003_cte.status AS order__status\n      , subq_2.__revenue AS revenue\n    FROM (\n      SELECT\n        order_id AS order\n        , price AS __revenue\n      FROM \"olist\".\"main\".\"fct_order_items\" order_items_src_10000\n      WHERE DATE_TRUNC('day', purchased_at) BETWEEN '2017-01-01' AND '2017-12-31'\n    ) subq_2\n    LEFT OUTER JOIN\n      sma_10003_cte\n    ON\n      subq_2.order = sma_10003_cte.order\n  ) subq_7\n  WHERE order__status = 'delivered'\n) subq_11\nCROSS JOIN (\n  SELECT\n    SUM(delivered_orders) AS delivered_orders\n  FROM (\n    SELECT\n      order__status\n      , __delivered_orders AS delivered_orders\n    FROM sma_10003_cte\n    WHERE metric_time__day BETWEEN '2017-01-01' AND '2017-12-31'\n  ) subq_14\n  WHERE order__status = 'delivered'\n) subq_18"
+   }
+  }
+ ],
+ "usage": {
+  "requests": 3,
+  "prompt_tokens": 2729,
+  "cached_tokens": 1024,
+  "completion_tokens": 176
+ }
+}

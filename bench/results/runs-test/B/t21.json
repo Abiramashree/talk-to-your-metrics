@@ -1,0 +1,17 @@
+{
+ "question_id": "t21",
+ "setup": "B",
+ "model": "openai/gpt-oss-120b",
+ "fingerprint": "9c5235a39f9007c9",
+ "seconds": null,
+ "final": null,
+ "trace": [],
+ "usage": {
+  "requests": 0,
+  "prompt_tokens": 0,
+  "cached_tokens": 0,
+  "completion_tokens": 0
+ },
+ "error": "invalid tool call after the no-tools retry: the model made an invalid tool call: {\"error\":{\"message\":\"Tool choice is none, but model called a tool\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"repo_browser.get_dimensions\\\", \\\"arguments\\\": {\\\"metric\\\":\\\"orders\\\"}}\"}}",
+ "recorded_from_log": "first attempt; the run raised before saving, so its trace was not captured"
+}

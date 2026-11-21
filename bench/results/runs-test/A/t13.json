@@ -1,0 +1,52 @@
+{
+ "question_id": "t13",
+ "setup": "A",
+ "model": "openai/gpt-oss-120b",
+ "fingerprint": "7f059a5cd2095fef",
+ "seconds": 16.4,
+ "final": {
+  "answer": "The average order value in 2017 was 160.74470033923885.",
+  "columns": [
+   "avg_order_value"
+  ],
+  "rows": [
+   [
+    160.74470033923885
+   ]
+  ]
+ },
+ "trace": [
+  {
+   "tool": "get_schema",
+   "arguments": {},
+   "result": {
+    "today": "2018-10-17",
+    "schema": "raw.customers (99,441 rows)\n  customer_id VARCHAR\n  customer_unique_id VARCHAR\n  customer_zip_code_prefix VARCHAR\n  customer_city VARCHAR\n  customer_state VARCHAR\nraw.geolocation (1,000,163 rows)\n  geolocation_zip_code_prefix VARCHAR\n  geolocation_lat DOUBLE\n  geolocation_lng DOUBLE\n  geolocation_city VARCHAR\n  geolocation_state VARCHAR\nraw.order_items (112,650 rows)\n  order_id VARCHAR\n  order_item_id BIGINT\n  product_id VARCHAR\n  seller_id VARCHAR\n  shipping_limit_date TIMESTAMP\n  price DOUBLE\n  freight_value DOUBLE\nraw.order_payments (103,886 rows)\n  order_id VARCHAR\n  payment_sequential BIGINT\n  payment_type VARCHAR  values: boleto, credit_card, debit_card, not_defined, voucher\n  payment_installments BIGINT\n  payment_value DOUBLE\nraw.order_reviews (99,224 rows)\n  review_id VARCHAR\n  order_id VARCHAR\n  review_score BIGINT\n  review_comment_title VARCHAR\n  review_comment_message VARCHAR\n  review_creation_date TIMESTAMP\n  review_answer_timestamp TIMESTAMP\nraw.orders (99,441 rows)\n  order_id VARCHAR\n  customer_id VARCHAR\n  order_status VARCHAR  values: approved, canceled, created, delivered, invoiced, processing, shipped, unavailable\n  order_purchase_timestamp TIMESTAMP\n  order_approved_at TIMESTAMP\n  order_delivered_carrier_date TIMESTAMP\n  order_delivered_customer_date TIMESTAMP\n  order_estimated_delivery_date TIMESTAMP\nraw.product_category_name_translation (71 rows)\n  product_category_name VARCHAR\n  product_category_name_english VARCHAR\nraw.products (32,951 rows)\n  product_id VARCHAR\n  product_category_name VARCHAR\n  product_name_lenght BIGINT\n  product_description_lenght BIGINT\n  product_photos_qty BIGINT\n  product_weight_g BIGINT\n  product_length_cm BIGINT\n  product_height_cm BIGINT\n  product_width_cm BIGINT\nraw.sellers (3,095 rows)\n  seller_id VARCHAR\n  seller_zip_code_prefix VARCHAR\n  seller_city VARCHAR\n  seller_state VARCHAR"
+   }
+  },
+  {
+   "tool": "run_sql",
+   "arguments": {
+    "sql": "SELECT AVG(order_total) AS avg_order_value FROM (\n  SELECT o.order_id, SUM(p.payment_value) AS order_total\n  FROM raw.orders o\n  JOIN raw.order_payments p USING (order_id)\n  WHERE EXTRACT(year FROM o.order_purchase_timestamp) = 2017\n  GROUP BY o.order_id\n) t;"
+   },
+   "result": {
+    "columns": [
+     "avg_order_value"
+    ],
+    "rows": [
+     [
+      160.74470033923885
+     ]
+    ],
+    "truncated": false,
+    "sql": "SELECT AVG(order_total) AS avg_order_value FROM (\n  SELECT o.order_id, SUM(p.payment_value) AS order_total\n  FROM raw.orders o\n  JOIN raw.order_payments p USING (order_id)\n  WHERE EXTRACT(year FROM o.order_purchase_timestamp) = 2017\n  GROUP BY o.order_id\n) t;"
+   }
+  }
+ ],
+ "usage": {
+  "requests": 3,
+  "prompt_tokens": 2191,
+  "cached_tokens": 256,
+  "completion_tokens": 321
+ }
+}

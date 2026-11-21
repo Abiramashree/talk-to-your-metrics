@@ -1,0 +1,158 @@
+{
+ "question_id": "t06",
+ "setup": "B",
+ "model": "openai/gpt-oss-120b",
+ "fingerprint": "9c5235a39f9007c9",
+ "seconds": 22.4,
+ "final": {
+  "answer": "Payments received for delivered orders placed in 2017 total 6,922,900.24.",
+  "columns": [
+   "metric_time__year",
+   "payments"
+  ],
+  "rows": [
+   [
+    "2017-01-01",
+    6922900.24
+   ]
+  ]
+ },
+ "trace": [
+  {
+   "tool": "list_metrics",
+   "arguments": {},
+   "result": {
+    "today": "2018-10-17",
+    "metrics": [
+     {
+      "name": "average_delivery_days"
+     },
+     {
+      "name": "average_order_value"
+     },
+     {
+      "name": "average_review_score"
+     },
+     {
+      "name": "canceled_orders"
+     },
+     {
+      "name": "cancellation_rate"
+     },
+     {
+      "name": "customers"
+     },
+     {
+      "name": "delivered_orders"
+     },
+     {
+      "name": "delivered_orders_with_date"
+     },
+     {
+      "name": "freight"
+     },
+     {
+      "name": "gross_merchandise_value"
+     },
+     {
+      "name": "late_delivery_rate"
+     },
+     {
+      "name": "late_orders"
+     },
+     {
+      "name": "new_customers"
+     },
+     {
+      "name": "orders"
+     },
+     {
+      "name": "payments"
+     },
+     {
+      "name": "repeat_customer_rate"
+     },
+     {
+      "name": "repeat_customers"
+     },
+     {
+      "name": "revenue"
+     }
+    ]
+   }
+  },
+  {
+   "tool": "get_dimensions",
+   "arguments": {
+    "metrics": [
+     "payments"
+    ]
+   },
+   "result": {
+    "metrics": [
+     "payments"
+    ],
+    "time": {
+     "name": "metric_time",
+     "grains": [
+      "day",
+      "week",
+      "month",
+      "quarter",
+      "year"
+     ]
+    },
+    "dimensions": [
+     {
+      "name": "order__is_late"
+     },
+     {
+      "name": "order__review_score"
+     },
+     {
+      "name": "order__state"
+     },
+     {
+      "name": "order__status"
+     },
+     {
+      "name": "payment__payment_type"
+     }
+    ]
+   }
+  },
+  {
+   "tool": "query_metrics",
+   "arguments": {
+    "end": "2017-12-31",
+    "group_by": [
+     "metric_time__year"
+    ],
+    "metrics": [
+     "payments"
+    ],
+    "start": "2017-01-01"
+   },
+   "result": {
+    "columns": [
+     "metric_time__year",
+     "payments"
+    ],
+    "rows": [
+     [
+      "2017-01-01",
+      6922900.24
+     ]
+    ],
+    "truncated": false,
+    "sql": "SELECT\n  metric_time__year\n  , SUM(payments) AS payments\nFROM (\n  SELECT\n    subq_3.metric_time__year AS metric_time__year\n    , orders_src_10000.status AS order__status\n    , subq_3.__payments AS payments\n  FROM (\n    SELECT\n      DATE_TRUNC('year', purchased_at) AS metric_time__year\n      , order_id AS order\n      , amount AS __payments\n    FROM \"olist\".\"main\".\"fct_payments\" payments_src_10000\n    WHERE DATE_TRUNC('day', purchased_at) BETWEEN '2017-01-01' AND '2017-12-31'\n  ) subq_3\n  LEFT OUTER JOIN\n    \"olist\".\"main\".\"fct_orders\" orders_src_10000\n  ON\n    subq_3.order = orders_src_10000.order_id\n) subq_8\nWHERE order__status = 'delivered'\nGROUP BY\n  metric_time__year\nORDER BY metric_time__year"
+   }
+  }
+ ],
+ "usage": {
+  "requests": 4,
+  "prompt_tokens": 3606,
+  "cached_tokens": 1536,
+  "completion_tokens": 400
+ }
+}

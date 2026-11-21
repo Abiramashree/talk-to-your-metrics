@@ -1,0 +1,881 @@
+{
+  "split": "test",
+  "setups": {
+    "A": {
+      "scored": 30,
+      "of": 30,
+      "correct": 10,
+      "accuracy": 0.3333,
+      "wilson95": [
+        0.1923,
+        0.5122
+      ],
+      "per_trap": {
+        "attribute-join": {
+          "correct": 1,
+          "n": 1
+        },
+        "customer-identity": {
+          "correct": 0,
+          "n": 3
+        },
+        "duplicate-reviews": {
+          "correct": 1,
+          "n": 3
+        },
+        "late-definition": {
+          "correct": 1,
+          "n": 3
+        },
+        "order-status": {
+          "correct": 2,
+          "n": 4
+        },
+        "orders-without-items": {
+          "correct": 1,
+          "n": 1
+        },
+        "relative-time": {
+          "correct": 0,
+          "n": 2
+        },
+        "revenue-definition": {
+          "correct": 0,
+          "n": 7
+        },
+        "unanswerable": {
+          "correct": 4,
+          "n": 6
+        }
+      },
+      "copy_differs": 0,
+      "copy_differs_and_wrong": 0,
+      "questions": [
+        {
+          "id": "t01",
+          "trap": "revenue-definition",
+          "correct": false,
+          "reason": "expected row [5962902.01] not found",
+          "copy_differs": false,
+          "tokens": 2363
+        },
+        {
+          "id": "t02",
+          "trap": "revenue-definition",
+          "correct": false,
+          "reason": "expected row ['2018-01-01T00:00:00', 924645.0] not found",
+          "copy_differs": false,
+          "tokens": 2825
+        },
+        {
+          "id": "t03",
+          "trap": "revenue-definition",
+          "correct": false,
+          "reason": "top row differs",
+          "copy_differs": false,
+          "tokens": 2554
+        },
+        {
+          "id": "t04",
+          "trap": "revenue-definition",
+          "correct": false,
+          "reason": "expected row [6921535.24] not found",
+          "copy_differs": false,
+          "tokens": 2423
+        },
+        {
+          "id": "t05",
+          "trap": "revenue-definition",
+          "correct": false,
+          "reason": "expected row [1233459.65] not found",
+          "copy_differs": false,
+          "tokens": 2399
+        },
+        {
+          "id": "t06",
+          "trap": "revenue-definition",
+          "correct": false,
+          "reason": "expected row [6922900.24] not found",
+          "copy_differs": false,
+          "tokens": 2444
+        },
+        {
+          "id": "t07",
+          "trap": "customer-identity",
+          "correct": false,
+          "reason": "expected row [2997] not found",
+          "copy_differs": false,
+          "tokens": 2298
+        },
+        {
+          "id": "t08",
+          "trap": "customer-identity",
+          "correct": false,
+          "reason": "invalid tool call after the no-tools retry: the model made an invalid tool call: {\"error\":{\"message\":\"Tool choice is none, but model called a tool\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"run_sql\\\", \\\"arguments\\\": {\\\"sql\\\":\\\"SELECT COUNT(DISTINCT customer_id) AS distinct_customers, COUNT(*) AS total_orders FROM raw.orders;\\\"}}\"}}",
+          "copy_differs": null,
+          "tokens": 0
+        },
+        {
+          "id": "t09",
+          "trap": "customer-identity",
+          "correct": false,
+          "reason": "expected row [43713] not found",
+          "copy_differs": false,
+          "tokens": 2352
+        },
+        {
+          "id": "t10",
+          "trap": "attribute-join",
+          "correct": true,
+          "reason": "top row matches",
+          "copy_differs": false,
+          "tokens": 2378
+        },
+        {
+          "id": "t11",
+          "trap": "order-status",
+          "correct": false,
+          "reason": "expected row [43428] not found",
+          "copy_differs": false,
+          "tokens": 2294
+        },
+        {
+          "id": "t12",
+          "trap": "order-status",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 2281
+        },
+        {
+          "id": "t13",
+          "trap": "order-status",
+          "correct": false,
+          "reason": "expected row [137.305471] not found",
+          "copy_differs": false,
+          "tokens": 2512
+        },
+        {
+          "id": "t14",
+          "trap": "order-status",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 2470
+        },
+        {
+          "id": "t15",
+          "trap": "orders-without-items",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 2244
+        },
+        {
+          "id": "t16",
+          "trap": "late-definition",
+          "correct": false,
+          "reason": "expected row [0.056487] not found",
+          "copy_differs": false,
+          "tokens": 2721
+        },
+        {
+          "id": "t17",
+          "trap": "late-definition",
+          "correct": false,
+          "reason": "expected row [0.050024] not found",
+          "copy_differs": false,
+          "tokens": 2953
+        },
+        {
+          "id": "t18",
+          "trap": "late-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 2423
+        },
+        {
+          "id": "t19",
+          "trap": "duplicate-reviews",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 2438
+        },
+        {
+          "id": "t20",
+          "trap": "duplicate-reviews",
+          "correct": false,
+          "reason": "expected row [True, 2.270491] not found",
+          "copy_differs": false,
+          "tokens": 2538
+        },
+        {
+          "id": "t21",
+          "trap": "duplicate-reviews",
+          "correct": false,
+          "reason": "expected row [6260] not found",
+          "copy_differs": false,
+          "tokens": 2419
+        },
+        {
+          "id": "t22",
+          "trap": "relative-time",
+          "correct": false,
+          "reason": "expected row [2016, 40470.98] not found",
+          "copy_differs": false,
+          "tokens": 2789
+        },
+        {
+          "id": "t23",
+          "trap": "relative-time",
+          "correct": false,
+          "reason": "expected row [7218125.12] not found",
+          "copy_differs": false,
+          "tokens": 2496
+        },
+        {
+          "id": "t24",
+          "trap": "revenue-definition",
+          "correct": false,
+          "reason": "expected row [1330026.39] not found",
+          "copy_differs": false,
+          "tokens": 2441
+        },
+        {
+          "id": "u01",
+          "trap": "unanswerable",
+          "correct": false,
+          "reason": "invalid tool call after the no-tools retry: the model made an invalid tool call: {\"error\":{\"message\":\"Tool choice is none, but model called a tool\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"run_sql\\\", \\\"arguments\\\": {\\n  \\\"sql\\\": \\\"WITH orders_2017 AS (\\\\n    SELECT o.order_id\\\\n    FROM raw.orders o\\\\n    WHERE o.order_purchase_ti",
+          "copy_differs": null,
+          "tokens": 0
+        },
+        {
+          "id": "u02",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 1170
+        },
+        {
+          "id": "u03",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 1161
+        },
+        {
+          "id": "u04",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 1222
+        },
+        {
+          "id": "u05",
+          "trap": "unanswerable",
+          "correct": false,
+          "reason": "invalid tool call after the no-tools retry: the model made an invalid tool call: {\"error\":{\"message\":\"Tool choice is none, but model called a tool\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"run_sql\\\", \\\"arguments\\\": {\\n  \\\"sql\\\": \\\"SELECT COUNT(*) AS total_orders FROM raw.orders WHERE EXTRACT(year FROM order_purchase_timestamp) = 2",
+          "copy_differs": null,
+          "tokens": 0
+        },
+        {
+          "id": "u06",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 1245
+        }
+      ]
+    },
+    "B": {
+      "scored": 30,
+      "of": 30,
+      "correct": 26,
+      "accuracy": 0.8667,
+      "wilson95": [
+        0.7032,
+        0.9469
+      ],
+      "per_trap": {
+        "attribute-join": {
+          "correct": 1,
+          "n": 1
+        },
+        "customer-identity": {
+          "correct": 3,
+          "n": 3
+        },
+        "duplicate-reviews": {
+          "correct": 2,
+          "n": 3
+        },
+        "late-definition": {
+          "correct": 3,
+          "n": 3
+        },
+        "order-status": {
+          "correct": 4,
+          "n": 4
+        },
+        "orders-without-items": {
+          "correct": 1,
+          "n": 1
+        },
+        "relative-time": {
+          "correct": 1,
+          "n": 2
+        },
+        "revenue-definition": {
+          "correct": 6,
+          "n": 7
+        },
+        "unanswerable": {
+          "correct": 5,
+          "n": 6
+        }
+      },
+      "copy_differs": 2,
+      "copy_differs_and_wrong": 1,
+      "questions": [
+        {
+          "id": "t01",
+          "trap": "revenue-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 2692
+        },
+        {
+          "id": "t02",
+          "trap": "revenue-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 4072
+        },
+        {
+          "id": "t03",
+          "trap": "revenue-definition",
+          "correct": true,
+          "reason": "top row matches",
+          "copy_differs": false,
+          "tokens": 5228
+        },
+        {
+          "id": "t04",
+          "trap": "revenue-definition",
+          "correct": false,
+          "reason": "invalid tool call after the no-tools retry: the model made an invalid tool call: {\"error\":{\"message\":\"Tool choice is none, but model called a tool\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"get_dimensions\\\", \\\"arguments\\\": {\\\"metrics\\\": [\\\"gross_merchandise_value\\\",\\\"freight\\\"], \\\"dimensions\\\": [\\\"order_purchase_timestamp\\\"], \\\"fil",
+          "copy_differs": null,
+          "tokens": 0
+        },
+        {
+          "id": "t05",
+          "trap": "revenue-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 3855
+        },
+        {
+          "id": "t06",
+          "trap": "revenue-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 4006
+        },
+        {
+          "id": "t07",
+          "trap": "customer-identity",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 3592
+        },
+        {
+          "id": "t08",
+          "trap": "customer-identity",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 3676
+        },
+        {
+          "id": "t09",
+          "trap": "customer-identity",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 3772
+        },
+        {
+          "id": "t10",
+          "trap": "attribute-join",
+          "correct": true,
+          "reason": "top row matches",
+          "copy_differs": false,
+          "tokens": 3810
+        },
+        {
+          "id": "t11",
+          "trap": "order-status",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 5314
+        },
+        {
+          "id": "t12",
+          "trap": "order-status",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 2661
+        },
+        {
+          "id": "t13",
+          "trap": "order-status",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 2905
+        },
+        {
+          "id": "t14",
+          "trap": "order-status",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 2842
+        },
+        {
+          "id": "t15",
+          "trap": "orders-without-items",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 3656
+        },
+        {
+          "id": "t16",
+          "trap": "late-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 3846
+        },
+        {
+          "id": "t17",
+          "trap": "late-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 4037
+        },
+        {
+          "id": "t18",
+          "trap": "late-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 3794
+        },
+        {
+          "id": "t19",
+          "trap": "duplicate-reviews",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 3817
+        },
+        {
+          "id": "t20",
+          "trap": "duplicate-reviews",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": true,
+          "tokens": 3725
+        },
+        {
+          "id": "t21",
+          "trap": "duplicate-reviews",
+          "correct": false,
+          "reason": "invalid tool call after the no-tools retry: the model made an invalid tool call: {\"error\":{\"message\":\"Tool choice is none, but model called a tool\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"repo_browser.get_dimensions\\\", \\\"arguments\\\": {\\\"metric\\\":\\\"orders\\\"}}\"}}",
+          "copy_differs": null,
+          "tokens": 0
+        },
+        {
+          "id": "t22",
+          "trap": "relative-time",
+          "correct": false,
+          "reason": "expected row [2016, 40470.98] not found",
+          "copy_differs": true,
+          "tokens": 4347
+        },
+        {
+          "id": "t23",
+          "trap": "relative-time",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 2688
+        },
+        {
+          "id": "t24",
+          "trap": "revenue-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 4050
+        },
+        {
+          "id": "u01",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 1164
+        },
+        {
+          "id": "u02",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 1130
+        },
+        {
+          "id": "u03",
+          "trap": "unanswerable",
+          "correct": false,
+          "reason": "invalid tool call after the no-tools retry: the model made an invalid tool call: {\"error\":{\"message\":\"Tool choice is none, but model called a tool\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"get_dimensions\\\", \\\"arguments\\\": {}}\"}}",
+          "copy_differs": null,
+          "tokens": 0
+        },
+        {
+          "id": "u04",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 1155
+        },
+        {
+          "id": "u05",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 1129
+        },
+        {
+          "id": "u06",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 1146
+        }
+      ]
+    },
+    "C": {
+      "scored": 30,
+      "of": 30,
+      "correct": 30,
+      "accuracy": 1.0,
+      "wilson95": [
+        0.8865,
+        1.0
+      ],
+      "per_trap": {
+        "attribute-join": {
+          "correct": 1,
+          "n": 1
+        },
+        "customer-identity": {
+          "correct": 3,
+          "n": 3
+        },
+        "duplicate-reviews": {
+          "correct": 3,
+          "n": 3
+        },
+        "late-definition": {
+          "correct": 3,
+          "n": 3
+        },
+        "order-status": {
+          "correct": 4,
+          "n": 4
+        },
+        "orders-without-items": {
+          "correct": 1,
+          "n": 1
+        },
+        "relative-time": {
+          "correct": 2,
+          "n": 2
+        },
+        "revenue-definition": {
+          "correct": 7,
+          "n": 7
+        },
+        "unanswerable": {
+          "correct": 6,
+          "n": 6
+        }
+      },
+      "copy_differs": 0,
+      "copy_differs_and_wrong": 0,
+      "questions": [
+        {
+          "id": "t01",
+          "trap": "revenue-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 4314
+        },
+        {
+          "id": "t02",
+          "trap": "revenue-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 7334
+        },
+        {
+          "id": "t03",
+          "trap": "revenue-definition",
+          "correct": true,
+          "reason": "top row matches",
+          "copy_differs": false,
+          "tokens": 7293
+        },
+        {
+          "id": "t04",
+          "trap": "revenue-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 4411
+        },
+        {
+          "id": "t05",
+          "trap": "revenue-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 7083
+        },
+        {
+          "id": "t06",
+          "trap": "revenue-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 6764
+        },
+        {
+          "id": "t07",
+          "trap": "customer-identity",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 4148
+        },
+        {
+          "id": "t08",
+          "trap": "customer-identity",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 4169
+        },
+        {
+          "id": "t09",
+          "trap": "customer-identity",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 6606
+        },
+        {
+          "id": "t10",
+          "trap": "attribute-join",
+          "correct": true,
+          "reason": "top row matches",
+          "copy_differs": false,
+          "tokens": 6673
+        },
+        {
+          "id": "t11",
+          "trap": "order-status",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 6529
+        },
+        {
+          "id": "t12",
+          "trap": "order-status",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 8715
+        },
+        {
+          "id": "t13",
+          "trap": "order-status",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 4538
+        },
+        {
+          "id": "t14",
+          "trap": "order-status",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 6839
+        },
+        {
+          "id": "t15",
+          "trap": "orders-without-items",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 4188
+        },
+        {
+          "id": "t16",
+          "trap": "late-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 4224
+        },
+        {
+          "id": "t17",
+          "trap": "late-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 6874
+        },
+        {
+          "id": "t18",
+          "trap": "late-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 6755
+        },
+        {
+          "id": "t19",
+          "trap": "duplicate-reviews",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 6593
+        },
+        {
+          "id": "t20",
+          "trap": "duplicate-reviews",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 6713
+        },
+        {
+          "id": "t21",
+          "trap": "duplicate-reviews",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 6750
+        },
+        {
+          "id": "t22",
+          "trap": "relative-time",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 7486
+        },
+        {
+          "id": "t23",
+          "trap": "relative-time",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 7097
+        },
+        {
+          "id": "t24",
+          "trap": "revenue-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 6868
+        },
+        {
+          "id": "u01",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 1947
+        },
+        {
+          "id": "u02",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 1920
+        },
+        {
+          "id": "u03",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 1909
+        },
+        {
+          "id": "u04",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 1947
+        },
+        {
+          "id": "u05",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 1918
+        },
+        {
+          "id": "u06",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 1926
+        }
+      ]
+    }
+  }
+}

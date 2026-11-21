@@ -95,7 +95,12 @@ async def _ask(question: str, server: MCPServer, llm: LLM, system: str) -> dict:
                 # gpt-oss wraps a final answer in a call to a tool that doesn't exist (e.g. "json"), which
                 # the provider rejects (seen on dev questions du1/du2). Retry this turn with no tools,
                 # so the model has to reply with the final JSON as text.
-                message = await llm.chat(messages, None)
+                try:
+                    message = await llm.chat(messages, None)
+                except ToolCallRejected as e:
+                    # Still calling a tool when none is offered: the run ends without an answer (scored wrong).
+                    return {"final": None, "error": f"invalid tool call after the no-tools retry: {str(e)[:200]}",
+                            "trace": trace, "usage": dict(llm.usage)}
             tool_calls = message.get("tool_calls") or []
             if not tool_calls:
                 final = _final(message.get("content", ""))
