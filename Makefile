@@ -1,7 +1,7 @@
 PY := .venv/bin/python
 DBT := DBT_PROFILES_DIR=dbt .venv/bin/dbt
 
-.PHONY: data build answers test serve mcp
+.PHONY: data build answers test serve mcp bench score
 
 data:
 	$(PY) scripts/load_olist.py
@@ -20,3 +20,10 @@ serve:
 
 mcp:
 	$(PY) -m ttym.mcp_server
+
+# make bench SETUP=C SPLIT=dev   (runs only what changed; stops cleanly at the daily limit)
+bench:
+	$(PY) bench/run.py --setup $(SETUP) --split $(SPLIT)
+
+score:
+	$(PY) bench/score.py $(or $(SPLIT),test)

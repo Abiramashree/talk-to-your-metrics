@@ -6,6 +6,8 @@ from ttym.llm import LLM, LLMError, QuotaExhausted
 
 pytestmark = pytest.mark.anyio
 OK = {"choices": [{"message": {"role": "assistant", "content": "hi"}}], "usage": {"prompt_tokens": 3, "completion_tokens": 1}}
+CACHED = {"choices": [{"message": {"role": "assistant", "content": "hi"}}],
+          "usage": {"prompt_tokens": 100, "completion_tokens": 1, "prompt_tokens_details": {"cached_tokens": 80}}}
 
 
 @pytest.fixture
@@ -40,7 +42,7 @@ def client(*responses):
 async def test_success_counts_usage():
     llm = client(httpx.Response(200, json=OK))
     assert (await llm.chat([{"role": "user", "content": "x"}]))["content"] == "hi"
-    assert llm.usage == {"requests": 1, "prompt_tokens": 3, "completion_tokens": 1}
+    assert llm.usage == {"requests": 1, "prompt_tokens": 3, "cached_tokens": 0, "completion_tokens": 1}
 
 
 async def test_per_minute_limit_waits_then_succeeds(env):
@@ -85,3 +87,9 @@ def test_missing_key(monkeypatch):
     monkeypatch.delenv("GROQ_API_KEY")
     with pytest.raises(LLMError, match="GROQ_API_KEY"):
         LLM()
+
+
+async def test_cached_tokens_are_counted_separately():
+    llm = client(httpx.Response(200, json=CACHED))
+    await llm.chat([])
+    assert llm.usage["prompt_tokens"] == 100 and llm.usage["cached_tokens"] == 80

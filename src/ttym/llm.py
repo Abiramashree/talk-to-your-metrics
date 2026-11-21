@@ -42,7 +42,8 @@ class LLM:
     model: str = MODEL
     timeout: float = 60
     transport: httpx.AsyncBaseTransport | None = None  # tests pass a fake network here
-    usage: dict = field(default_factory=lambda: {"requests": 0, "prompt_tokens": 0, "completion_tokens": 0})
+    usage: dict = field(default_factory=lambda: {"requests": 0, "prompt_tokens": 0, "cached_tokens": 0, "completion_tokens": 0})
+    wait_budget: float = WAIT_BUDGET
 
     def __post_init__(self) -> None:
         self._key = os.environ.get("GROQ_API_KEY")
@@ -65,7 +66,7 @@ class LLM:
                     break
                 wait = float(response.headers.get("retry-after", 10))
                 # waiting longer than the budget won't help this visitor; neither will waiting out a daily limit
-                if _out_for_the_day(response) or waited + wait > WAIT_BUDGET:
+                if _out_for_the_day(response) or waited + wait > self.wait_budget:
                     raise QuotaExhausted("the model's free limit is used up for now")
                 await asyncio.sleep(wait)
                 waited += wait
@@ -76,4 +77,6 @@ class LLM:
         self.usage["requests"] += 1
         self.usage["prompt_tokens"] += usage.get("prompt_tokens", 0)
         self.usage["completion_tokens"] += usage.get("completion_tokens", 0)
+        # OpenAI-compatible field; cached prefix tokens don't count toward Groq's rate limits
+        self.usage["cached_tokens"] += (usage.get("prompt_tokens_details") or {}).get("cached_tokens", 0)
         return data["choices"][0]["message"]

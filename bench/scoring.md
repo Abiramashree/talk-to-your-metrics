@@ -2,6 +2,20 @@
 
 Written before any benchmark run. Every setup is scored by the same rules.
 
+## Setups
+
+All three use the same model (Groq `openai/gpt-oss-120b`, temperature 0), the same agent loop
+(`src/ttym/agent.py`: a tool call is required on the first turn, at most 8 tool calls), the same
+final-answer format below, and one run per question. Only the tools and what they return differ.
+
+| Setup | Tools | What the model sees |
+|---|---|---|
+| A, raw text-to-SQL | `get_schema`, `run_sql` | A read-only copy of the 9 raw tables only: column names and types, row counts, and the values of text columns with at most 10 distinct values. Queries return at most 200 rows and stop after 10 seconds. |
+| B, semantic layer, bare | `list_metrics`, `get_dimensions`, `query_metrics` | Metric and dimension names only. No descriptions, synonyms or example values. |
+| C, semantic layer, modeled for agents | same as B | B plus descriptions, synonyms, example dimension values, and each metric's definition returned with its result. |
+
+B and C run against the same metrics, joins and SQL; only the descriptive metadata differs.
+
 ## The answer
 
 Each run ends with one final answer:

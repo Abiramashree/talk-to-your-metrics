@@ -57,10 +57,10 @@ def _final(content: str) -> dict | None:
     return None
 
 
-async def ask(question: str, server: MCPServer, llm: LLM) -> dict:
+async def ask(question: str, server: MCPServer, llm: LLM, system: str = SYSTEM) -> dict:
     """Answer one question. Returns the final answer, every tool call, and token usage."""
     try:
-        return await _ask(question, server, llm)
+        return await _ask(question, server, llm, system)
     except BaseExceptionGroup as group:
         # The MCP client's task group wraps errors raised inside it; surface the model error itself
         # so callers can handle it (quota, network) instead of seeing an opaque group.
@@ -75,7 +75,7 @@ def _first_leaf(group: BaseExceptionGroup) -> BaseException:
     return error
 
 
-async def _ask(question: str, server: MCPServer, llm: LLM) -> dict:
+async def _ask(question: str, server: MCPServer, llm: LLM, system: str) -> dict:
     trace: list[dict] = []
     async with Client(server) as client:
         tools = [
@@ -83,7 +83,7 @@ async def _ask(question: str, server: MCPServer, llm: LLM) -> dict:
                                               "parameters": _inline_refs(t.input_schema)}}
             for t in (await client.list_tools()).tools
         ]
-        messages: list[dict] = [{"role": "system", "content": SYSTEM}, {"role": "user", "content": question}]
+        messages: list[dict] = [{"role": "system", "content": system}, {"role": "user", "content": question}]
         reminded = False
         while True:
             calls_left = MAX_TOOL_CALLS - len(trace)
