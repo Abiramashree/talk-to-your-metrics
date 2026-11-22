@@ -3,9 +3,11 @@
     python bench/run.py --setup C --split dev            # all dev questions through setup C
     python bench/run.py --setup A --split test --ids t01 t07
 
-Setups: A = raw text-to-SQL, B = semantic layer without descriptions, C = semantic layer modeled for agents.
+Setups: A = raw text-to-SQL, A+ = A with the business definitions in the prompt, B = semantic layer without descriptions, C = semantic layer modeled for agents.
 A run is skipped when a saved run exists for the same question and the same prompt fingerprint, so
 reruns only touch what changed. A used-up daily limit stops the run; rerun the same command later.
+Any other provider error is saved as a failed run (scored wrong) and is not retried. Every line printed
+is also appended to bench/results/logs/<split>-<setup>.log.
 """
 
 from __future__ import annotations
@@ -27,17 +29,23 @@ sys.path.insert(0, str(ROOT / "src"))
 from ttym.agent import SYSTEM as SEMANTIC_SYSTEM, ask  # noqa: E402
 from ttym.llm import LLM, LLMError, QuotaExhausted, load_env  # noqa: E402
 
-SETUPS = ("A", "B", "C")
+SETUPS = ("A", "A+", "B", "C")
 
 
 def build(setup: str):
     """The MCP server and system prompt for a setup."""
-    if setup == "A":
+    if setup in ("A", "A+"):
         from ttym.sql_server import SYSTEM, build_sql_server
-        return build_sql_server(), SYSTEM
+        return build_sql_server(), SYSTEM if setup == "A" else SYSTEM + "\n\n" + definitions()
     from ttym.core import SemanticLayer
     from ttym.mcp_server import build_server
     return build_server(SemanticLayer(bare=setup == "B")), SEMANTIC_SYSTEM
+
+
+def definitions() -> str:
+    """The business definitions from bench/definitions.md, from the first section on (the intro names files A+ can't see)."""
+    text = (ROOT / "bench" / "definitions.md").read_text()
+    return "Business definitions every answer must follow:\n\n" + text[text.index("## Time"):].strip()
 
 
 async def fingerprint(setup: str, server, system: str, model: str) -> str:
@@ -45,7 +53,7 @@ async def fingerprint(setup: str, server, system: str, model: str) -> str:
     async with Client(server) as client:
         tools = [{"name": t.name, "description": t.description, "schema": t.input_schema}
                  for t in (await client.list_tools()).tools]
-        first = "get_schema" if setup == "A" else "list_metrics"
+        first = "get_schema" if setup.startswith("A") else "list_metrics"
         discovery = (await client.call_tool(first, {})).structured_content
     blob = json.dumps({"setup": setup, "model": model, "system": system, "tools": tools, "discovery": discovery},
                       sort_keys=True, default=str)
@@ -61,6 +69,16 @@ async def run(setup: str, split: str, ids: list[str] | None, out_root: pathlib.P
     out = out_root / f"runs-{split}" / setup
     out.mkdir(parents=True, exist_ok=True)
     done, skipped, totals = 0, 0, {"prompt_tokens": 0, "cached_tokens": 0, "completion_tokens": 0, "requests": 0}
+    logs = out_root / "logs"
+    logs.mkdir(parents=True, exist_ok=True)
+    logfile = logs / f"{split}-{setup}.log"
+
+    def log(line: str) -> None:
+        print(line)
+        with logfile.open("a") as f:
+            f.write(f"{time.strftime('%Y-%m-%dT%H:%M:%S')}  {line}\n")
+
+    log(f"start setup {setup} split {split} fingerprint {key}")
     for q in questions:
         path = out / f"{q['id']}.json"
         if path.exists() and not force and json.loads(path.read_text()).get("fingerprint") == key:
@@ -71,11 +89,11 @@ async def run(setup: str, split: str, ids: list[str] | None, out_root: pathlib.P
         try:
             result = await ask(q["question"], server, llm, system)
         except QuotaExhausted:
-            print(f"stopped at {q['id']}: the daily model limit is used up; rerun later to continue")
+            log(f"stopped at {q['id']}: the daily model limit is used up; rerun later to continue")
             return {"done": done, "skipped": skipped, "stopped": q["id"], **totals}
         except LLMError as e:
-            print(f"{q['id']}: {e}; not saved, will retry on the next run")
-            continue
+            result = {"final": None, "error": f"provider error: {str(e)[:300]}",
+                      "trace": getattr(e, "trace", []), "usage": getattr(e, "usage", dict(llm.usage))}
         record = {"question_id": q["id"], "setup": setup, "model": model, "fingerprint": key,
                   "seconds": round(time.time() - started, 1), **result}
         path.write_text(json.dumps(record, indent=1, default=str) + "\n")
@@ -83,8 +101,9 @@ async def run(setup: str, split: str, ids: list[str] | None, out_root: pathlib.P
             totals[k] += result["usage"].get(k, 0)
         done += 1
         u = result["usage"]
-        print(f"{q['id']}  {u['requests']} req  {u['prompt_tokens']} in ({u.get('cached_tokens', 0)} cached)  "
-              f"{u['completion_tokens']} out  {record['seconds']}s")
+        status = "answered" if result.get("final") is not None else f"failed: {result.get('error', '')[:200]}"
+        log(f"{q['id']}  {u.get('requests', 0)} req  {u.get('prompt_tokens', 0)} in ({u.get('cached_tokens', 0)} cached)  "
+            f"{u.get('completion_tokens', 0)} out  {record['seconds']}s  {status}")
     return {"done": done, "skipped": skipped, "stopped": None, **totals}
 
 

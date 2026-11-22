@@ -16,7 +16,7 @@ from mcp import Client
 from mcp.server.mcpserver import MCPServer
 
 from ttym.core import TODAY
-from ttym.llm import LLM, ToolCallRejected, load_env
+from ttym.llm import LLM, LLMError, QuotaExhausted, ToolCallRejected, load_env
 
 MAX_TOOL_CALLS = 8
 
@@ -77,6 +77,18 @@ def _first_leaf(group: BaseExceptionGroup) -> BaseException:
 
 async def _ask(question: str, server: MCPServer, llm: LLM, system: str) -> dict:
     trace: list[dict] = []
+    try:
+        return await _loop(question, server, llm, system, trace)
+    except BaseException as error:
+        # Keep the tool calls made before the provider failed, so a failed run can be saved with its trace.
+        # The MCP client may wrap the error in an exception group; tag the model error inside it.
+        leaf = _first_leaf(error) if isinstance(error, BaseExceptionGroup) else error
+        if isinstance(leaf, LLMError) and not isinstance(leaf, QuotaExhausted):
+            leaf.trace, leaf.usage = trace, dict(llm.usage)
+        raise
+
+
+async def _loop(question: str, server: MCPServer, llm: LLM, system: str, trace: list[dict]) -> dict:
     async with Client(server) as client:
         tools = [
             {"type": "function", "function": {"name": t.name, "description": t.description or "",

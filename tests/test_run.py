@@ -70,3 +70,35 @@ async def test_quota_stops_the_run(tmp_path):
     result = await runner.run("C", "dev", ["d01", "d02"], tmp_path, llm_factory=make)
     assert result["stopped"] == "d01" and result["done"] == 0
     assert not list((tmp_path / "runs-dev" / "C").glob("*.json"))
+
+
+async def test_provider_error_is_saved_as_a_failed_run_and_logged(tmp_path):
+    from ttym.llm import LLMError
+
+    class Flaky(FakeLLM):
+        async def chat(self, *a, **k):
+            if not self.script:
+                raise LLMError("the model returned 500: upstream")
+            return await super().chat(*a, **k)
+
+    def make():
+        llm = Flaky([call("list_metrics", {})])
+        llm.model = "fake"
+        return llm
+
+    result = await runner.run("C", "dev", ["d01", "d02"], tmp_path, llm_factory=make)
+    assert result["done"] == 2 and result["stopped"] is None
+    saved = json.loads((tmp_path / "runs-dev" / "C" / "d01.json").read_text())
+    assert saved["final"] is None and saved["error"].startswith("provider error: the model returned 500")
+    assert saved["trace"][0]["tool"] == "list_metrics"
+    log = (tmp_path / "logs" / "dev-C.log").read_text()
+    assert "d01" in log and "failed: provider error" in log and "d02" in log
+    again = await runner.run("C", "dev", ["d01", "d02"], tmp_path, llm_factory=make)
+    assert again["done"] == 0 and again["skipped"] == 2
+
+
+def test_setup_a_plus_adds_only_the_definitions():
+    _, a = runner.build("A")
+    _, a_plus = runner.build("A+")
+    assert a_plus.startswith(a) and "customer_unique_id" in a_plus and "Excludes freight" in a_plus
+    assert "questions.yaml" not in a_plus and "semantic model" not in a_plus

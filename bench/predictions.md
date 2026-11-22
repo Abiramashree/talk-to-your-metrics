@@ -31,3 +31,21 @@ Questions where C's descriptions, synonyms and example values could change the o
 Expected: B and C differ on 0–4 of 30 questions. With 30 questions that gap is within noise,
 so results are reported per trap. If the gap is zero, that is the finding: once metric names are
 good, descriptions added little for this model on this data.
+
+## Setup A+ (raw text-to-SQL with the definitions in the prompt)
+
+Written after the first test run (A 10, B 26, C 30 of 30) and before any A+ run.
+
+The definitions should fix the choices A got wrong by not knowing the rules: revenue from item prices
+on delivered orders (t01–t06, t22–t24), `customer_unique_id` (t07–t09), average order value (t13).
+Rules that are easy to state but take careful SQL should still go wrong some of the time:
+
+| Trap | Questions | Likely mistake |
+|---|---|---|
+| duplicate-reviews | t19, t20, t21 | keeping every review instead of the latest per order |
+| late-definition | t16, t17 | comparing timestamps instead of dates, or counting by delivery date |
+| relative-time | t22, t23 | an off-by-one year |
+
+Expected: A+ gets 16–24 of 30. Near B (24 or more): the layer's value is enforcing the rules so the
+model doesn't have to apply them. Well below B (under 20): writing the SQL is the weak point even
+when the rules are known.

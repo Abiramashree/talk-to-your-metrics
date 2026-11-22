@@ -13,6 +13,7 @@ final-answer format below, and one run per question. Only the tools and what the
 | Setup | Tools | What the model sees |
 |---|---|---|
 | A, raw text-to-SQL | `get_schema`, `run_sql` | A read-only copy of the 9 raw tables only: column names and types, row counts, and the values of text columns with at most 10 distinct values. Queries return at most 200 rows and stop after 10 seconds. |
+| A+, raw text-to-SQL with definitions | same as A | A, plus `bench/definitions.md` (from "Time" on) appended to the system prompt. Added after the first test run. |
 | B, semantic layer, bare | `list_metrics`, `get_dimensions`, `query_metrics` | Metric and dimension names only. No descriptions, synonyms or example values. |
 | C, semantic layer, modeled for agents | same as B | B plus descriptions, synonyms, example dimension values, and each metric's definition returned with its result. |
 
@@ -26,6 +27,10 @@ Each run ends with one final answer:
 - `{"cannot_answer": "<reason>"}`.
 
 No final answer, an error, a timeout or more than 8 tool calls counts as wrong.
+
+Added after the first test run, for every later run: a provider error other than a used-up daily limit
+is saved as a failed run with its tool calls and is not retried. Every run also writes a log
+(`bench/results/logs/`).
 
 ## Answerable questions
 
