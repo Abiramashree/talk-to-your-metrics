@@ -293,6 +293,298 @@
         }
       ]
     },
+    "A+": {
+      "scored": 30,
+      "of": 30,
+      "correct": 25,
+      "accuracy": 0.8333,
+      "wilson95": [
+        0.6644,
+        0.9266
+      ],
+      "per_trap": {
+        "attribute-join": {
+          "correct": 1,
+          "n": 1
+        },
+        "customer-identity": {
+          "correct": 3,
+          "n": 3
+        },
+        "duplicate-reviews": {
+          "correct": 1,
+          "n": 3
+        },
+        "late-definition": {
+          "correct": 2,
+          "n": 3
+        },
+        "order-status": {
+          "correct": 4,
+          "n": 4
+        },
+        "orders-without-items": {
+          "correct": 1,
+          "n": 1
+        },
+        "relative-time": {
+          "correct": 2,
+          "n": 2
+        },
+        "revenue-definition": {
+          "correct": 5,
+          "n": 7
+        },
+        "unanswerable": {
+          "correct": 6,
+          "n": 6
+        }
+      },
+      "copy_differs": 1,
+      "copy_differs_and_wrong": 0,
+      "questions": [
+        {
+          "id": "t01",
+          "trap": "revenue-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 3640
+        },
+        {
+          "id": "t02",
+          "trap": "revenue-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 5700
+        },
+        {
+          "id": "t03",
+          "trap": "revenue-definition",
+          "correct": true,
+          "reason": "top row matches",
+          "copy_differs": false,
+          "tokens": 4248
+        },
+        {
+          "id": "t04",
+          "trap": "revenue-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 3663
+        },
+        {
+          "id": "t05",
+          "trap": "revenue-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 3713
+        },
+        {
+          "id": "t06",
+          "trap": "revenue-definition",
+          "correct": false,
+          "reason": "expected row [6922900.24] not found",
+          "copy_differs": false,
+          "tokens": 3721
+        },
+        {
+          "id": "t07",
+          "trap": "customer-identity",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 3671
+        },
+        {
+          "id": "t08",
+          "trap": "customer-identity",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 3891
+        },
+        {
+          "id": "t09",
+          "trap": "customer-identity",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 3636
+        },
+        {
+          "id": "t10",
+          "trap": "attribute-join",
+          "correct": true,
+          "reason": "top row matches",
+          "copy_differs": false,
+          "tokens": 3689
+        },
+        {
+          "id": "t11",
+          "trap": "order-status",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 3475
+        },
+        {
+          "id": "t12",
+          "trap": "order-status",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 3474
+        },
+        {
+          "id": "t13",
+          "trap": "order-status",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": true,
+          "tokens": 3844
+        },
+        {
+          "id": "t14",
+          "trap": "order-status",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 3797
+        },
+        {
+          "id": "t15",
+          "trap": "orders-without-items",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 3434
+        },
+        {
+          "id": "t16",
+          "trap": "late-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 3984
+        },
+        {
+          "id": "t17",
+          "trap": "late-definition",
+          "correct": false,
+          "reason": "expected row [0.050024] not found",
+          "copy_differs": false,
+          "tokens": 4057
+        },
+        {
+          "id": "t18",
+          "trap": "late-definition",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 3749
+        },
+        {
+          "id": "t19",
+          "trap": "duplicate-reviews",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 3746
+        },
+        {
+          "id": "t20",
+          "trap": "duplicate-reviews",
+          "correct": false,
+          "reason": "expected row [True, 2.270491] not found",
+          "copy_differs": false,
+          "tokens": 4246
+        },
+        {
+          "id": "t21",
+          "trap": "duplicate-reviews",
+          "correct": false,
+          "reason": "expected row [6260] not found",
+          "copy_differs": false,
+          "tokens": 3700
+        },
+        {
+          "id": "t22",
+          "trap": "relative-time",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 3787
+        },
+        {
+          "id": "t23",
+          "trap": "relative-time",
+          "correct": true,
+          "reason": "all rows match",
+          "copy_differs": false,
+          "tokens": 3695
+        },
+        {
+          "id": "t24",
+          "trap": "revenue-definition",
+          "correct": false,
+          "reason": "expected row [1330026.39] not found",
+          "copy_differs": false,
+          "tokens": 3774
+        },
+        {
+          "id": "u01",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 709
+        },
+        {
+          "id": "u02",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 698
+        },
+        {
+          "id": "u03",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 1974
+        },
+        {
+          "id": "u04",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 2007
+        },
+        {
+          "id": "u05",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 2078
+        },
+        {
+          "id": "u06",
+          "trap": "unanswerable",
+          "correct": true,
+          "reason": "declined",
+          "copy_differs": null,
+          "tokens": 708
+        }
+      ]
+    },
     "B": {
       "scored": 30,
       "of": 30,

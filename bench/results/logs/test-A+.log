@@ -1,0 +1,33 @@
+2026-11-21T20:02:19  start setup A+ split test fingerprint b5c4248505d62fe3
+2026-11-21T20:02:21  t01  3 req  3372 in (0 cached)  268 out  1.8s  answered
+2026-11-21T20:02:32  t02  4 req  5107 in (0 cached)  593 out  11.5s  answered
+2026-11-21T20:03:04  t03  3 req  3585 in (0 cached)  663 out  31.8s  answered
+2026-11-21T20:03:32  t04  3 req  3387 in (0 cached)  276 out  28.3s  answered
+2026-11-21T20:04:00  t05  3 req  3386 in (512 cached)  327 out  27.9s  answered
+2026-11-21T20:04:16  t06  3 req  3367 in (1536 cached)  354 out  16.3s  answered
+2026-11-21T20:04:31  t07  3 req  3364 in (1024 cached)  307 out  14.3s  answered
+2026-11-21T20:04:54  t08  3 req  3415 in (1536 cached)  476 out  23.0s  answered
+2026-11-21T20:05:12  t09  3 req  3391 in (512 cached)  245 out  18.1s  answered
+2026-11-21T20:05:33  t10  3 req  3390 in (1536 cached)  299 out  21.7s  answered
+2026-11-21T20:05:56  t11  3 req  3317 in (1024 cached)  158 out  22.2s  answered
+2026-11-21T20:06:10  t12  3 req  3318 in (1536 cached)  156 out  14.6s  answered
+2026-11-21T20:06:27  t13  3 req  3451 in (1024 cached)  393 out  16.6s  answered
+2026-11-21T20:06:44  t14  3 req  3358 in (1024 cached)  439 out  17.5s  answered
+2026-11-21T20:07:06  t15  3 req  3297 in (1536 cached)  137 out  22.0s  answered
+2026-11-21T20:07:25  t16  3 req  3516 in (1024 cached)  468 out  18.5s  answered
+2026-11-21T20:07:43  t17  3 req  3574 in (1536 cached)  483 out  18.6s  answered
+2026-11-21T20:08:09  t18  3 req  3404 in (1024 cached)  345 out  25.7s  answered
+2026-11-21T20:08:36  t19  3 req  3380 in (512 cached)  366 out  26.6s  answered
+2026-11-21T20:09:00  t20  3 req  3697 in (1024 cached)  549 out  24.2s  answered
+2026-11-21T20:09:20  t21  3 req  3386 in (1536 cached)  314 out  20.5s  answered
+2026-11-21T20:09:49  t22  3 req  3425 in (1024 cached)  362 out  28.8s  answered
+2026-11-21T20:09:57  t23  3 req  3357 in (1536 cached)  338 out  8.0s  answered
+2026-11-21T20:10:14  t24  3 req  3428 in (1024 cached)  346 out  17.2s  answered
+2026-11-21T20:10:27  u01  1 req  635 in (512 cached)  74 out  12.8s  answered
+2026-11-21T20:10:36  u02  1 req  637 in (0 cached)  61 out  8.3s  answered
+2026-11-21T20:10:59  u03  2 req  1862 in (512 cached)  112 out  23.1s  answered
+2026-11-21T20:11:20  u04  2 req  1866 in (1024 cached)  141 out  21.3s  answered
+2026-11-21T20:11:23  stopped at u05: the daily model limit is used up; rerun later to continue
+2026-11-23T00:03:26  start setup A+ split test fingerprint b5c4248505d62fe3
+2026-11-23T00:03:28  u05  2 req  1866 in (0 cached)  212 out  2.4s  answered
+2026-11-23T00:03:29  u06  1 req  634 in (0 cached)  74 out  1.1s  answered

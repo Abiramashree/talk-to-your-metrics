@@ -1,0 +1,17 @@
+{
+ "question_id": "u06",
+ "setup": "A+",
+ "model": "openai/gpt-oss-120b",
+ "fingerprint": "b5c4248505d62fe3",
+ "seconds": 1.1,
+ "final": {
+  "cannot_answer": "Conversion rate is not defined in the available data"
+ },
+ "trace": [],
+ "usage": {
+  "requests": 1,
+  "prompt_tokens": 634,
+  "cached_tokens": 0,
+  "completion_tokens": 74
+ }
+}

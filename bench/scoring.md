@@ -39,6 +39,8 @@ An answer is correct when every expected row is matched and no unexpected row re
 - **Rows** are compared as a set; order does not matter.
 - **Key values** (text, dates, true/false) identify a row. Text is compared trimmed and
   case-insensitively. Dates are compared on `YYYY-MM-DD`; a year key matches a date in that year.
+  A month given as `YYYY-MM` matches the first day of that month (added after the first A+ run, where
+  t02's correct answer labelled months `2018-01`; re-scoring every saved run changed only that answer).
 - **Numeric values** are matched by kind (per question in `scoring.yaml`), in any column:
 
   | Kind | Match when |

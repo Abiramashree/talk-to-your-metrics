@@ -1,0 +1,17 @@
+{
+ "question_id": "u01",
+ "setup": "A+",
+ "model": "openai/gpt-oss-120b",
+ "fingerprint": "b5c4248505d62fe3",
+ "seconds": 12.8,
+ "final": {
+  "cannot_answer": "Profit margin is not defined in the available business definitions"
+ },
+ "trace": [],
+ "usage": {
+  "requests": 1,
+  "prompt_tokens": 635,
+  "cached_tokens": 512,
+  "completion_tokens": 74
+ }
+}

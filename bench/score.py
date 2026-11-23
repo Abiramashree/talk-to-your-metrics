@@ -45,6 +45,8 @@ def key_matches(expected, got) -> bool:
         return str(got).strip()[:4] == str(expected)
     e, g = str(expected).strip(), str(got).strip()
     if len(e) >= 10 and e[4] == "-" and e[7] == "-":  # dates compare on YYYY-MM-DD
+        if len(g) == 7 and g[4] == "-" and e[8:10] == "01":  # a month given as YYYY-MM matches its first day
+            return g == e[:7]
         return g[:10] == e[:10]
     return e.lower() == g.lower()
 

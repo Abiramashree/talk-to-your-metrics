@@ -104,3 +104,11 @@ def test_summary_counts_per_setup_and_trap():
     assert s["correct"] == 2 and s["scored"] == 2 and s["of"] == 30
     assert s["per_trap"]["customer-identity"] == {"correct": 1, "n": 1}
     assert s["copy_differs"] == 0
+
+
+def test_month_key_matches_first_day_only():
+    from score import key_matches
+    assert key_matches("2018-01-01T00:00:00", "2018-01")
+    assert not key_matches("2018-01-01T00:00:00", "2018-02")
+    assert not key_matches("2018-01-15", "2018-01")
+    assert not key_matches("2018-01-01", "2018")
