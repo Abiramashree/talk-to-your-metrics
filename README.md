@@ -16,15 +16,84 @@ On the Olist e-commerce data (99,441 orders, 2016–2018):
 
 A semantic layer defines each metric once, so an agent asks for `revenue` instead of writing
 its own SQL. Vendor benchmarks ([dbt](https://docs.getdbt.com/blog/semantic-layer-vs-text-to-sql-2026),
-[Cube](https://arxiv.org/abs/2604.25149)) show this helps. What they don't separate is how much comes from
-the layer itself and how much from modeling it for agents: clear definitions, synonyms, stated
-rules. This project measures that, on real data.
+[Cube](https://arxiv.org/abs/2604.25149)) show this helps, but don't separate how much comes from the
+layer itself, from knowing the business rules, or from modeling the layer for agents. This project
+connects a semantic layer to an agent through MCP and a REST API, and measures each of those.
+
+## Results
+
+Same agent, same model (Groq `gpt-oss-120b`, temperature 0), same 30 questions frozen before the
+semantic model was written, one run each. Only what the agent is connected to changes.
+
+| The agent is connected to | Correct | Tokens per question |
+|---|---|---|
+| Raw tables; it writes its own SQL | 10 / 30 | ~2,300 |
+| Raw tables, with the business definitions in its prompt | 25 / 30 | ~3,400 |
+| The semantic layer, metric names only | 26 / 30 | ~3,300 |
+| The semantic layer modeled for agents (descriptions, synonyms, example values) | 30 / 30 | ~5,400 |
+
+**Connected to the semantic layer, the same agent goes from 10 to 26 correct** (exact paired test,
+p = 0.0001). Writing its own SQL, it guessed what "revenue" and "customer" mean. Asked how many
+customers ordered more than once, it answered 0; the answer is 2,997.
+
+**The gap is the business rules.** Given the definitions in its prompt, the raw-SQL agent reaches 25
+(p = 0.00006), level with the names-only layer, but still breaks rules it was told: payments on every
+order instead of delivered ones, timestamps instead of dates, every review instead of the latest.
+The semantic layer applies them for it, without a rules document in every prompt.
+
+**Descriptions for agents scored 30, but at 30 questions that is not shown** (p = 0.13). The four
+questions the names-only layer missed were three tool calls the provider rejected and one misread
+"last year"; none was clearly caused by the missing descriptions, and the descriptions add about 65%
+more tokens.
+
+### Why answers were wrong
+
+| Cause | Raw SQL | + definitions | Names only | Modeled |
+|---|---|---|---|---|
+| Wrong business definition | 16 | 5 | 0 | 0 |
+| Misread the question | 1 | 0 | 1 | 0 |
+| Tool call rejected by the provider | 3 | 0 | 3 | 0 |
+| **Wrong** | **20** | **5** | **4** | **0** |
+
+All six unanswerable questions were declined by every setup that returned an answer.
+
+### Limitations
+
+- One model, one dataset, 30 questions written for this study, one run each.
+- The questions were written to probe known ambiguities in this data, so accuracy here is a comparison
+  between setups, not an estimate for questions in general. The semantic layer and the correct answers
+  follow the same written definitions, as a business's metrics would; the correct answers are computed
+  independently, from the raw tables.
+- Tokens are prompt plus completion, averaged over the runs the provider answered.
+- Setup "raw SQL + definitions" was added after the first test run; its prediction (16–24) was
+  committed before it ran, and it scored 25.
+- The paired test was chosen after the runs; the scoring rules committed beforehand report Wilson
+  intervals ([scores](bench/results/summary-test.json)).
+- After that run the scorer was fixed to accept a month written `YYYY-MM`; re-scoring every saved run
+  changed one answer.
+- Six runs ended in a tool call the provider rejected twice; their traces weren't captured and they
+  were not rerun.
+
+[Every run, with its tool calls](bench/results/runs-test) · [scoring rules](bench/scoring.md) ·
+[predictions](bench/predictions.md)
 
 ## Method
 
 - Correct answers are SQL on the raw tables, never the semantic layer ([questions](bench/questions.yaml), [definitions](bench/definitions.md)).
 - Test questions are never run through the layer before scoring; tuning uses the dev questions only.
-- [Scoring rules](bench/scoring.md) and [predictions](bench/predictions.md) were committed before any run.
+- [Scoring rules](bench/scoring.md) and [predictions](bench/predictions.md) were committed before each run.
+
+## What's here
+
+| Path | |
+|---|---|
+| `dbt/` | Staging and mart models, 18 MetricFlow metrics, data tests, a reconciliation against the raw tables |
+| `src/ttym/core.py` | The one query core: validated metrics, dimensions and filters to MetricFlow |
+| `src/ttym/mcp_server.py`, `api.py` | MCP server and REST API over that core |
+| `src/ttym/agent.py` | The agent loop, which reaches data only through MCP tools |
+| `src/ttym/sql_server.py` | The raw-SQL baseline: read-only raw tables, no semantic layer |
+| `bench/` | Questions, correct SQL, scoring rules, predictions, runner, scorer, every saved run |
+| `web/` | The agent page |
 
 ## Status
 
@@ -32,7 +101,7 @@ rules. This project measures that, on real data.
 - [x] Benchmark: 30 test questions (24 with correct SQL, 6 the data can't answer) and 8 dev questions
 - [x] MCP server and REST API over one core
 - [x] Agent page: chat, charts, and a query playground where any answer can be regrouped, filtered or re-sorted without the AI
-- [ ] Results: raw text-to-SQL vs semantic layer vs semantic layer modeled for agents
+- [x] Results
 - [ ] Hosted demo
 
 ## Run
@@ -43,7 +112,8 @@ Requires [uv](https://docs.astral.sh/uv/).
 uv sync
 make data    # downloads Olist and loads it into DuckDB
 make build   # builds the dbt models and runs the tests
-make test    # tests the core, MCP server and REST API
+make test    # tests the core, MCP server, REST API, agent and scorer
+make score   # re-scores the saved runs; no model calls
 ```
 
 ## Use
