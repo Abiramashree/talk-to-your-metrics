@@ -1,10 +1,11 @@
 """Check every held-out question before any model sees it. No LLM calls.
 
-    python bench/check_heldout.py
+    python bench/check_heldout.py            # check, and check the frozen answers still match
+    python bench/check_heldout.py --freeze   # check, then write bench/heldout_answers.json
 
 Answerable questions: the correct SQL on the raw tables and the listed semantic-layer query must give the
 same rows (scored with the benchmark's matching rules). Questions that should be declined: the listed query
-must be refused by the semantic layer. Exits 1 if any question fails.
+must be refused by the semantic layer. Exits 1 if any question fails or the frozen answers are out of date.
 """
 
 from __future__ import annotations
@@ -31,7 +32,10 @@ def to_query(spec: dict) -> Query:
                  limit=spec.get("limit"))
 
 
-def main() -> int:
+ANSWERS = HERE / "heldout_answers.json"
+
+
+def main(freeze: bool = False) -> int:
     questions = yaml.safe_load((HERE / "heldout.yaml").read_text())
     ids = [q["id"] for q in questions]
     assert len(ids) == len(set(ids)), "duplicate ids"
@@ -57,8 +61,16 @@ def main() -> int:
         failed += not ok
         print(f"{q['id']}  {'ok   ' if ok else 'FAIL '}  {reason}")
     print(f"{len(questions) - failed}/{len(questions)} checked")
-    return 1 if failed else 0
+    if failed:
+        return 1
+    if freeze:
+        ANSWERS.write_text(json.dumps(gold, indent=1) + "\n")
+        print(f"wrote {ANSWERS.name}")
+    elif not ANSWERS.exists() or json.loads(ANSWERS.read_text()) != gold:
+        print(f"{ANSWERS.name} is missing or out of date: run with --freeze")
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(freeze="--freeze" in sys.argv[1:]))

@@ -1,7 +1,7 @@
 PY := .venv/bin/python
 DBT := DBT_PROFILES_DIR=dbt .venv/bin/dbt
 
-.PHONY: data build answers test serve mcp bench score
+.PHONY: data build answers test serve mcp bench score gate heldout heldout-score
 
 data:
 	$(PY) scripts/load_olist.py
@@ -27,3 +27,15 @@ bench:
 
 score:
 	$(PY) bench/score.py $(or $(SPLIT),test)
+
+# Held-out set (harness comparison): make heldout SETUP=C   (live model calls; ask before running all 30)
+heldout:
+	$(PY) bench/run_heldout.py --setup $(SETUP)
+
+heldout-score:
+	$(PY) bench/score_heldout.py
+
+# The gate every change passes before merge; no model calls. CI runs it.
+gate: test
+	$(PY) bench/check_heldout.py
+	$(PY) bench/score_heldout.py

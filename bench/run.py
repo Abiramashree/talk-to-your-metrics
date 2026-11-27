@@ -63,22 +63,26 @@ async def fingerprint(setup: str, server, system: str, model: str) -> str:
 async def run(setup: str, split: str, ids: list[str] | None, out_root: pathlib.Path, llm_factory=LLM, force=False) -> dict:
     questions = [q for q in yaml.safe_load((ROOT / "bench" / "questions.yaml").read_text())
                  if q["split"] == split and (not ids or q["id"] in ids)]
+    return await run_questions(questions, setup, out_root / f"runs-{split}" / setup,
+                               out_root / "logs" / f"{split}-{setup}.log", llm_factory, force, f"split {split}")
+
+
+async def run_questions(questions: list[dict], setup: str, out: pathlib.Path, logfile: pathlib.Path,
+                        llm_factory=LLM, force=False, label: str = "") -> dict:
+    """Ask each question through a setup and save one run per question in `out`."""
     server, system = build(setup)
     model = llm_factory().model
     key = await fingerprint(setup, server, system, model)
-    out = out_root / f"runs-{split}" / setup
     out.mkdir(parents=True, exist_ok=True)
     done, skipped, totals = 0, 0, {"prompt_tokens": 0, "cached_tokens": 0, "completion_tokens": 0, "requests": 0}
-    logs = out_root / "logs"
-    logs.mkdir(parents=True, exist_ok=True)
-    logfile = logs / f"{split}-{setup}.log"
+    logfile.parent.mkdir(parents=True, exist_ok=True)
 
     def log(line: str) -> None:
         print(line)
         with logfile.open("a") as f:
             f.write(f"{time.strftime('%Y-%m-%dT%H:%M:%S')}  {line}\n")
 
-    log(f"start setup {setup} split {split} fingerprint {key}")
+    log(f"start setup {setup} {label} fingerprint {key}".replace("  ", " "))
     for q in questions:
         path = out / f"{q['id']}.json"
         if path.exists() and not force and json.loads(path.read_text()).get("fingerprint") == key:
