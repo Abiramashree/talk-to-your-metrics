@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 from dataclasses import dataclass, field
 
@@ -19,6 +20,27 @@ class LLMError(RuntimeError):
 
 class ToolCallRejected(LLMError):
     """The provider rejected the model's tool call as invalid (e.g. a tool that doesn't exist)."""
+
+    def __init__(self, message: str, detail: str = "", generation: str = "") -> None:
+        super().__init__(message)
+        self.detail = detail or message
+        self.generation = generation  # the rejected call as the model wrote it, if the provider returned it
+
+
+def _failed_generation(body: str) -> str:
+    try:
+        return str(json.loads(body).get("error", {}).get("failed_generation", ""))
+    except (ValueError, AttributeError):
+        return ""
+
+
+def _rejection_detail(body: str) -> str:
+    """The provider's reason and what the model generated, short enough to feed back to the model."""
+    try:
+        error = json.loads(body).get("error", {})
+    except (ValueError, AttributeError):
+        return body[:300]
+    return f"{error.get('message', '')} (you generated: {str(error.get('failed_generation', ''))[:200]})"
 
 
 class QuotaExhausted(LLMError):
@@ -75,7 +97,8 @@ class LLM:
                 await asyncio.sleep(wait)
                 waited += wait
         if response.status_code == 400 and "tool_use_failed" in response.text:
-            raise ToolCallRejected(f"the model made an invalid tool call: {response.text[:300]}")
+            raise ToolCallRejected(f"the model made an invalid tool call: {response.text[:300]}",
+                                   _rejection_detail(response.text), _failed_generation(response.text))
         if response.status_code != 200:
             # the excerpt is for logs and the benchmark runner; the web app shows visitors its own message
             raise LLMError(f"the model returned {response.status_code}: {response.text[:300]}")

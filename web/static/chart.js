@@ -110,7 +110,9 @@ function line(points, f) {
 }
 
 function bars(items, f) {
-  const W = narrow() ? 360 : 640, LABEL = narrow() ? 100 : 150, VALUE = 70, ROW = 28, BAR = 16;
+  const W = narrow() ? 360 : 640, LABEL = narrow() ? 100 : 150, ROW = 28, BAR = 16;
+  // room for the longest value label (11.5px tabular digits ≈ 7 units a character), so none is cut off
+  const VALUE = Math.max(70, Math.ceil(Math.max(...items.map((p) => f.value(p.value).length)) * 7) + 10);
   const H = items.length * ROW + 4;
   const wrap = div("viz");
   const max = Math.max(...items.map((p) => p.value), 0) || 1;

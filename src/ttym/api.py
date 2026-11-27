@@ -1,12 +1,19 @@
 """The web app: the page, the agent, REST and MCP over HTTP.
 
     uvicorn ttym.api:app       # page at /, REST at /metrics /dimensions /query, MCP at /mcp
+
+Hosting settings (environment variables):
+    TTYM_PUBLIC_HOST     the public host name, e.g. talk-to-your-metrics-xyz.a.run.app; MCP accepts it
+                         in addition to localhost
+    TTYM_BEHIND_PROXY=1  behind Cloud Run: identify clients by the last X-Forwarded-For entry, the
+                         address Cloud Run's front end appends (earlier entries can be forged)
 """
 
 from __future__ import annotations
 
 import asyncio
 import contextlib
+import logging
 import os
 import pathlib
 import time
@@ -14,11 +21,12 @@ from collections import defaultdict, deque
 from typing import Any
 
 from fastapi import FastAPI, Query as Param, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+from mcp.server.transport_security import TransportSecuritySettings
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from ttym.agent import ask
+from ttym.agent import CHAT_SYSTEM, ask
 from ttym.core import Filter, Query, QueryError, SemanticLayer
 from ttym.llm import LLM, LLMError, QuotaExhausted, load_env
 from ttym.mcp_server import FilterIn, Name, build_server
@@ -33,9 +41,27 @@ ASK_TIMEOUT = 90
 DAILY_CAP_MESSAGE = "The free LLM limit for today is used up, sorry. The query panel still works."
 QUOTA_MESSAGE = "The free LLM limit is used up for now, sorry. Try again later; the query panel still works."
 
+NO_ANSWER_MESSAGE = "Couldn't answer that one. Try rephrasing it, or build it in the query panel."
+log = logging.getLogger("ttym")
+
+PUBLIC_HOST = os.environ.get("TTYM_PUBLIC_HOST", "").strip()
+BEHIND_PROXY = os.environ.get("TTYM_BEHIND_PROXY") == "1"
+
+
+def mcp_security(public_host: str = "") -> TransportSecuritySettings:
+    """DNS rebinding protection: MCP answers only requests addressed to localhost or our public host."""
+    hosts = ["127.0.0.1:*", "localhost:*", "[::1]:*"]
+    origins = ["http://127.0.0.1:*", "http://localhost:*", "http://[::1]:*"]
+    if public_host:
+        hosts.append(public_host)
+        origins.append(f"https://{public_host}")
+    return TransportSecuritySettings(enable_dns_rebinding_protection=True, allowed_hosts=hosts, allowed_origins=origins)
+
+
 layer = SemanticLayer(bare=os.environ.get("TTYM_BARE") == "1")
 mcp = build_server(layer)
-mcp_app = mcp.streamable_http_app()
+# Stateless: each MCP request stands alone, so nothing is lost when Cloud Run replaces an instance.
+mcp_app = mcp.streamable_http_app(stateless_http=True, transport_security=mcp_security(PUBLIC_HOST))
 
 
 @contextlib.asynccontextmanager
@@ -71,6 +97,9 @@ async def security_headers(request: Request, call_next):
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     if request.url.path in ("/ask", "/query"):
         response.headers["Cache-Control"] = "no-store"
+    elif request.url.path == "/" or request.url.path == "/chat" or request.url.path.startswith("/static/"):
+        # revalidate every time (a cheap 304 when unchanged), so a deploy never leaves visitors on old code
+        response.headers["Cache-Control"] = "no-cache"
     return response
 
 
@@ -103,6 +132,10 @@ query_limiter = Limiter(per_ip=int(os.environ.get("TTYM_QUERY_PER_IP", "300")), 
 
 
 def _client(request: Request) -> str:
+    if BEHIND_PROXY:
+        forwarded = request.headers.get("x-forwarded-for", "").split(",")[-1].strip()
+        if forwarded:
+            return forwarded
     return request.client.host if request.client else "unknown"
 
 
@@ -116,13 +149,26 @@ class QueryIn(BaseModel):
     limit: int | None = None
 
 
+class PreviousIn(BaseModel):
+    """The last question in the conversation and the query behind its answer (as shown, edits included)."""
+    question: str = Field(min_length=1, max_length=300)
+    query: QueryIn | None = None
+
+
 class AskIn(BaseModel):
     question: str = Field(min_length=3, max_length=300)
+    previous: PreviousIn | None = None
 
 
 @app.exception_handler(QueryError)
 async def query_error(_, exc: QueryError) -> JSONResponse:
     return JSONResponse(status_code=400, content={"error": str(exc)})
+
+
+@app.get("/healthz", include_in_schema=False)
+def healthz() -> PlainTextResponse:
+    """Liveness for Cloud Run's startup probe and uptime pings: no page, model or query work."""
+    return PlainTextResponse("ok")
 
 
 @app.get("/", include_in_schema=False)
@@ -169,7 +215,11 @@ async def ask_question(body: AskIn, request: Request) -> JSONResponse:
         return JSONResponse(status_code=429, content={"error": refused})
     try:
         llm = LLM()
-        out = await asyncio.wait_for(ask(body.question.strip(), mcp, llm), timeout=ASK_TIMEOUT)
+        previous = None
+        if body.previous:
+            previous = {"question": body.previous.question.strip(),
+                        "query": body.previous.query.model_dump(exclude_defaults=True) if body.previous.query else None}
+        out = await asyncio.wait_for(ask(body.question.strip(), mcp, llm, CHAT_SYSTEM, previous=previous), timeout=ASK_TIMEOUT)
     except QuotaExhausted:
         return JSONResponse(status_code=503, content={"error": QUOTA_MESSAGE})
     except LLMError:
@@ -177,7 +227,9 @@ async def ask_question(body: AskIn, request: Request) -> JSONResponse:
     except TimeoutError:
         return JSONResponse(status_code=504, content={"error": "The assistant took too long to answer. Try again in a minute."})
     if out.get("final") is None:
-        return JSONResponse(status_code=502, content={"error": "The assistant did not produce an answer."})
+        # Why it failed and which tools ran; the question text itself is not logged.
+        log.warning("no answer: %s; tools: %s", out.get("error"), [step["tool"] for step in out.get("trace", [])])
+        return JSONResponse(status_code=502, content={"error": NO_ANSWER_MESSAGE})
     return JSONResponse({"final": out["final"], "working": working(out["trace"])})
 
 

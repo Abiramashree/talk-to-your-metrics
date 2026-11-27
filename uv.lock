@@ -1191,6 +1191,7 @@ dependencies = [
     { name = "dbt-metricflow", extra = ["dbt-duckdb"] },
     { name = "duckdb" },
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "mcp" },
     { name = "metricflow" },
     { name = "pyyaml" },
@@ -1199,7 +1200,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "httpx" },
     { name = "pytest" },
 ]
 
@@ -1210,6 +1210,7 @@ requires-dist = [
     { name = "dbt-metricflow", extras = ["dbt-duckdb"], specifier = "==0.16.0" },
     { name = "duckdb", specifier = "==2.0.0" },
     { name = "fastapi", specifier = "==0.165.0" },
+    { name = "httpx", specifier = "==0.28.1" },
     { name = "mcp", specifier = "==2.3.0" },
     { name = "metricflow", specifier = "==0.214.0" },
     { name = "pyyaml", specifier = ">=6" },
@@ -1217,10 +1218,7 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [
-    { name = "httpx", specifier = "==0.28.1" },
-    { name = "pytest", specifier = "==9.2.0" },
-]
+dev = [{ name = "pytest", specifier = "==9.2.0" }]
 
 [[package]]
 name = "termcolor"

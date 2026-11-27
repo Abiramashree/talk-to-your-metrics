@@ -36,7 +36,7 @@ function axisFormatter(col) {
 }
 
 function keyLabel(col, value) {
-  if (value === null) return "—";
+  if (value === null) return /category/.test(col) ? "(no category)" : "(none)";
   if (typeof value === "boolean") return value ? "Yes" : "No";
   if (!isTime(col) || typeof value !== "string") return String(value);
   const [y, mo] = value.split("-");
@@ -49,6 +49,31 @@ function keyLabel(col, value) {
 
 // ---------- state ----------
 const state = { metrics: [], labels: {}, dims: new Map(), cards: [], selected: null, seq: 0 };
+
+// One follow-up offered after a suggested question, so the first visit shows a conversation.
+const FOLLOW_UPS = { "Top 5 product categories by revenue": "Which of these had the most canceled orders?" };
+
+// The conversation survives a reload in this tab (sessionStorage: this tab only, gone when it closes).
+const SAVED = "ttym.chat";
+const KEPT = ["question", "steps", "cannot", "failed", "query", "result", "original", "originalResult", "edited", "next"];
+
+function save() {
+  const done = state.cards.filter((c) => !c.thinking).slice(-20)
+    .map((c) => Object.fromEntries(KEPT.filter((k) => c[k] !== undefined).map((k) => [k, c[k]])));
+  for (let keep = done.length; keep >= 0; keep -= 5) {
+    try { sessionStorage.setItem(SAVED, JSON.stringify(done.slice(done.length - keep))); return; }
+    catch { /* over the storage limit: keep fewer */ }
+  }
+}
+
+function restore() {
+  let saved = [];
+  try { saved = JSON.parse(sessionStorage.getItem(SAVED) || "[]"); } catch { return; }
+  if (!Array.isArray(saved)) return;
+  for (const fields of saved) {
+    if (fields && typeof fields === "object") renderCard(newCard(Object.fromEntries(KEPT.map((k) => [k, fields[k]]).filter(([, v]) => v !== undefined))));
+  }
+}
 const $ = (id) => document.getElementById(id);
 
 function el(tag, attrs = {}, ...children) {
@@ -164,7 +189,12 @@ function renderCard(card) {
     reply.addEventListener("click", () => select(card));
   }
   parts.push(reply);
+  if (card.next && card === state.cards[state.cards.length - 1] && !card.thinking) {
+    parts.push(el("div", { class: "suggestions follow" },
+      el("button", { type: "button", text: card.next, onclick: () => { const text = card.next; card.next = null; renderCard(card); ask(text); } })));
+  }
   card.el.replaceChildren(...parts);
+  if (!card.thinking && !card.loading) save();
 }
 
 function summary(q) {
@@ -197,15 +227,31 @@ function scrollThread() {
   t.scrollTo({ top: t.scrollHeight, behavior: "smooth" });
 }
 
+function queryBody(q) {
+  return {
+    metrics: q.metrics, group_by: q.group_by, filters: q.filters, start: q.start || null, end: q.end || null,
+    order_by: q.order_by, limit: q.limit || null,
+  };
+}
+
+// The last question (or panel query) and its query as shown, so follow-ups like "which of these" work.
+function previousTurn() {
+  const last = [...state.cards].reverse().find((c) => c.question || c.query);
+  if (!last) return null;
+  return { question: (last.question || "a query built in the panel").slice(0, 300), query: last.query ? queryBody(last.query) : null };
+}
+
 // ---------- asking ----------
 async function ask(question) {
+  const previous = previousTurn();
+  for (const c of state.cards) if (c.next) { c.next = null; renderCard(c); }  // an offered follow-up goes once you ask anything
   const card = newCard({ question, thinking: true });
   renderCard(card);
   scrollThread();
   $("question").value = "";
   $("question").disabled = true;
   try {
-    const data = await api("/ask", { question });
+    const data = await api("/ask", previous ? { question, previous } : { question });
     card.thinking = false;
     const w = data.working;
     card.steps = w ? w.steps : [];
@@ -217,6 +263,7 @@ async function ask(question) {
       card.result = { columns: w.columns, rows: w.rows, truncated: w.truncated, sql: w.sql, definitions: w.definitions };
       card.original = structuredClone(w.query);
       card.originalResult = card.result;
+      card.next = FOLLOW_UPS[question] || null;
     } else {
       card.cannot = "No query was run for this question.";
     }
@@ -246,11 +293,7 @@ async function run(card) {
   renderCard(card);
   let result = null, error = null;
   try {
-    const q = card.query;
-    result = await api("/query", {
-      metrics: q.metrics, group_by: q.group_by, filters: q.filters, start: q.start || null, end: q.end || null,
-      order_by: q.order_by, limit: q.limit || null,
-    });
+    result = await api("/query", queryBody(card.query));
   } catch (err) {
     error = err.message;
   }
@@ -464,6 +507,7 @@ async function start() {
     state.metrics = data.metrics;
     for (const m of data.metrics) state.labels[m.name] = m.label || m.name;
   } catch { /* the panel will show an empty picker; asking still works */ }
+  restore();
   renderPanel();
   $("composer").addEventListener("submit", (e) => {
     e.preventDefault();

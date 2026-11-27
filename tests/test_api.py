@@ -19,7 +19,7 @@ def client():
 
 def test_metrics(client):
     r = client.get("/metrics")
-    assert r.status_code == 200 and len(r.json()["metrics"]) == 18
+    assert r.status_code == 200 and len(r.json()["metrics"]) == 20
 
 
 def test_dimensions(client):
@@ -76,7 +76,7 @@ def live_server():
 async def test_mcp_over_http(live_server, anyio_backend):
     async with Client(f"{live_server}/mcp") as client:
         out = (await client.call_tool("list_metrics", {})).structured_content
-        assert len(out["metrics"]) == 18
+        assert len(out["metrics"]) == 20
 
 
 def test_page_and_security_headers(client):
@@ -189,3 +189,94 @@ def test_daily_cap_message(client, monkeypatch):
     monkeypatch.setattr(api, "limiter", api.Limiter(per_ip=10, per_day=0))
     r = client.post("/ask", json={"question": "Revenue?"})
     assert r.status_code == 429 and "for today" in r.json()["error"]
+
+
+def test_healthz_is_cheap_and_plain(client):
+    r = client.get("/healthz")
+    assert r.status_code == 200 and r.text == "ok" and r.headers["x-content-type-options"] == "nosniff"
+
+
+def test_client_ip_behind_proxy_uses_the_entry_cloud_run_appends(client, monkeypatch):
+    from ttym import api
+    monkeypatch.setattr(api, "query_limiter", api.Limiter(per_ip=2, per_day=100))
+    body = {"metrics": ["orders"]}
+    monkeypatch.setattr(api, "BEHIND_PROXY", True)
+    # The client forges a different first entry each time; the last entry (added by Cloud Run) is the same.
+    for forged in ("1.1.1.1", "2.2.2.2"):
+        assert client.post("/query", json=body, headers={"x-forwarded-for": f"{forged}, 203.0.113.7"}).status_code == 200
+    assert client.post("/query", json=body, headers={"x-forwarded-for": "3.3.3.3, 203.0.113.7"}).status_code == 429
+    assert client.post("/query", json=body, headers={"x-forwarded-for": "203.0.113.8"}).status_code == 200
+
+
+def test_forwarded_header_ignored_without_proxy_setting(client, monkeypatch):
+    from ttym import api
+    monkeypatch.setattr(api, "query_limiter", api.Limiter(per_ip=1, per_day=100))
+    monkeypatch.setattr(api, "BEHIND_PROXY", False)
+    body = {"metrics": ["orders"]}
+    assert client.post("/query", json=body, headers={"x-forwarded-for": "1.1.1.1"}).status_code == 200
+    assert client.post("/query", json=body, headers={"x-forwarded-for": "2.2.2.2"}).status_code == 429
+
+
+def test_mcp_accepts_only_local_and_public_host():
+    from ttym import api
+    from mcp.server.transport_security import TransportSecurityMiddleware
+    guard = TransportSecurityMiddleware(api.mcp_security("ttym-abc.a.run.app"))
+    assert guard._validate_host("ttym-abc.a.run.app") and guard._validate_host("localhost:8000")
+    assert not guard._validate_host("evil.example") and not guard._validate_host("ttym-abc.a.run.app.evil.example")
+    assert guard._validate_origin("https://ttym-abc.a.run.app") and not guard._validate_origin("https://evil.example")
+    local_only = TransportSecurityMiddleware(api.mcp_security(""))
+    assert not local_only._validate_host("ttym-abc.a.run.app")
+
+
+def test_mcp_rejects_a_foreign_host_header(client):
+    r = client.post("/mcp", json={"jsonrpc": "2.0", "id": 1, "method": "ping"},
+                    headers={"host": "evil.example", "accept": "application/json, text/event-stream"})
+    assert r.status_code in (400, 421)
+
+
+def test_no_answer_is_logged_and_explained(client, monkeypatch):
+    import logging
+
+    from fakes import FakeLLM
+    from ttym import api
+
+    class Capture(logging.Handler):
+        lines: list[str] = []
+
+        def emit(self, record):
+            self.lines.append(record.getMessage())
+
+    handler = Capture()
+    api.log.addHandler(handler)
+    monkeypatch.setattr(api, "LLM", lambda: FakeLLM([{"role": "assistant", "content": "not json"}] * 2))
+    monkeypatch.setattr(api, "limiter", api.Limiter(per_ip=10, per_day=10))
+    try:
+        r = client.post("/ask", json={"question": "secret question text"})
+    finally:
+        api.log.removeHandler(handler)
+    text = "\n".join(handler.lines)
+    assert r.status_code == 502 and r.json()["error"] == api.NO_ANSWER_MESSAGE
+    assert "no answer: no valid final answer" in text and "secret question text" not in text
+
+
+def test_ask_passes_previous_turn_and_validates_it(client, monkeypatch):
+    from fakes import FakeLLM, final
+    from ttym import api
+    llm = FakeLLM([final({"cannot_answer": "no"})])
+    monkeypatch.setattr(api, "LLM", lambda: llm)
+    monkeypatch.setattr(api, "limiter", api.Limiter(per_ip=10, per_day=10))
+    previous = {"question": "Top 5 categories by revenue",
+                "query": {"metrics": ["revenue"], "group_by": ["product__category"], "start": None, "limit": 5}}
+    r = client.post("/ask", json={"question": "Which of these were canceled most?", "previous": previous})
+    assert r.status_code == 200
+    sent = llm.sent[0]["messages"][1]["content"]
+    assert "Top 5 categories by revenue" in sent and '"limit": 5' in sent and '"start"' not in sent
+    too_long = {"question": "x" * 301}
+    assert client.post("/ask", json={"question": "Which of these?", "previous": too_long}).status_code == 422
+    bad_query = {"question": "q", "query": {"metrics": []}}
+    assert client.post("/ask", json={"question": "Which of these?", "previous": bad_query}).status_code == 422
+
+
+def test_page_and_static_files_are_revalidated(client):
+    for path in ("/", "/chat", "/static/app.js"):
+        assert client.get(path).headers["cache-control"] == "no-cache"

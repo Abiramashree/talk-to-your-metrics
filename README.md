@@ -74,6 +74,11 @@ All six unanswerable questions were declined by every setup that returned an ans
 - Six runs ended in a tool call the provider rejected twice; their traces weren't captured and they
   were not rerun.
 
+The benchmark ran on the 18 metrics at commit `9625327`. The app has since added two metrics for
+questions across levels of detail (orders by product category, orders by payment type), explanations when
+a metric can't be split by a dimension, and fixes for rejected tool calls; those are checked separately,
+on [8 new questions](bench/app_checks.yaml), not counted in the results above.
+
 [Every run, with its tool calls](bench/results/runs-test) · [scoring rules](bench/scoring.md) ·
 [predictions](bench/predictions.md)
 
@@ -87,7 +92,7 @@ All six unanswerable questions were declined by every setup that returned an ans
 
 | Path | |
 |---|---|
-| `dbt/` | Staging and mart models, 18 MetricFlow metrics, data tests, a reconciliation against the raw tables |
+| `dbt/` | Staging and mart models, 20 MetricFlow metrics, data tests, a reconciliation against the raw tables |
 | `src/ttym/core.py` | The one query core: validated metrics, dimensions and filters to MetricFlow |
 | `src/ttym/mcp_server.py`, `api.py` | MCP server and REST API over that core |
 | `src/ttym/agent.py` | The agent loop, which reaches data only through MCP tools |
@@ -97,7 +102,7 @@ All six unanswerable questions were declined by every setup that returned an ans
 
 ## Status
 
-- [x] Semantic model: dbt + MetricFlow on DuckDB, 18 metrics, 18 data tests
+- [x] Semantic model: dbt + MetricFlow on DuckDB, 20 metrics, 18 data tests
 - [x] Benchmark: 30 test questions (24 with correct SQL, 6 the data can't answer) and 8 dev questions
 - [x] MCP server and REST API over one core
 - [x] Agent page: chat, charts, and a query playground where any answer can be regrouped, filtered or re-sorted without the AI

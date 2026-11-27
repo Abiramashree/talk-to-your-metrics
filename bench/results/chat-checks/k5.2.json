@@ -1,0 +1,115 @@
+{
+ "turn": "k5.2",
+ "question": "same but canceled",
+ "previous": {
+  "question": "Delivered orders by payment type in 2018",
+  "query": {
+   "end": "2018-12-31",
+   "filters": [
+    {
+     "dimension": "order__status",
+     "operator": "=",
+     "value": "delivered"
+    }
+   ],
+   "group_by": [
+    "payment__payment_type"
+   ],
+   "metrics": [
+    "orders_by_payment_type"
+   ],
+   "start": "2018-01-01"
+  }
+ },
+ "seconds": 1.2,
+ "final": {
+  "answer": "Canceled orders by payment type in 2018",
+  "columns": [
+   "payment__payment_type",
+   "orders_by_payment_type"
+  ],
+  "rows": [
+   [
+    "boleto",
+    41
+   ],
+   [
+    "credit_card",
+    212
+   ],
+   [
+    "debit_card",
+    4
+   ],
+   [
+    "not_defined",
+    3
+   ],
+   [
+    "voucher",
+    81
+   ]
+  ]
+ },
+ "trace": [
+  {
+   "tool": "query_metrics",
+   "arguments": {
+    "end": "2018-12-31",
+    "filters": [
+     {
+      "dimension": "order__status",
+      "operator": "=",
+      "value": "canceled"
+     }
+    ],
+    "group_by": [
+     "payment__payment_type"
+    ],
+    "metrics": [
+     "orders_by_payment_type"
+    ],
+    "start": "2018-01-01"
+   },
+   "result": {
+    "columns": [
+     "payment__payment_type",
+     "orders_by_payment_type"
+    ],
+    "rows": [
+     [
+      "boleto",
+      41
+     ],
+     [
+      "credit_card",
+      212
+     ],
+     [
+      "debit_card",
+      4
+     ],
+     [
+      "not_defined",
+      3
+     ],
+     [
+      "voucher",
+      81
+     ]
+    ],
+    "truncated": false,
+    "sql": "SELECT\n  payment__payment_type\n  , COUNT(DISTINCT orders_by_payment_type) AS orders_by_payment_type\nFROM (\n  SELECT\n    subq_2.payment__payment_type AS payment__payment_type\n    , orders_src_10000.status AS order__status\n    , subq_2.__orders_by_payment_type AS orders_by_payment_type\n  FROM (\n    SELECT\n      order_id AS order\n      , payment_type AS payment__payment_type\n      , order_id AS __orders_by_payment_type\n    FROM \"olist\".\"main\".\"fct_payments\" payments_src_10000\n    WHERE DATE_TRUNC('day', purchased_at) BETWEEN '2018-01-01' AND '2018-12-31'\n  ) subq_2\n  LEFT OUTER JOIN\n    \"olist\".\"main\".\"fct_orders\" orders_src_10000\n  ON\n    subq_2.order = orders_src_10000.order_id\n) subq_7\nWHERE order__status = 'canceled'\nGROUP BY\n  payment__payment_type\nORDER BY payment__payment_type",
+    "definitions": {
+     "orders_by_payment_type": "Orders that used the payment type, any status; filter order__status for canceled or delivered ones. An order paid two ways (for example a voucher plus a card) counts in both, so payment types add up to more than all orders."
+    }
+   }
+  }
+ ],
+ "usage": {
+  "requests": 2,
+  "prompt_tokens": 2268,
+  "cached_tokens": 1536,
+  "completion_tokens": 272
+ }
+}

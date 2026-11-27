@@ -88,7 +88,9 @@ async def test_invalid_forced_tool_call_is_retried_without_requirement(server):
     llm = Rejecting([final({"cannot_answer": "No NPS survey data."})])
     out = await ask("What is our net promoter score?", server, llm)
     assert out["final"] == {"cannot_answer": "No NPS survey data."}
-    assert llm.sent[0] == {"tools": True, "tool_choice": "required"} and llm.sent[1]["tools"] is None
+    # first the feedback retry with tools (rejected again), then the retry with none
+    assert llm.sent[0] == {"tools": True, "tool_choice": "required"} and llm.sent[1] == {"tools": True, "tool_choice": "auto"}
+    assert llm.sent[2]["tools"] is None and len(out["rejected"]) == 2
 
 
 async def test_tool_call_after_no_tools_retry_ends_the_run(server):
@@ -100,3 +102,81 @@ async def test_tool_call_after_no_tools_retry_ends_the_run(server):
 
     out = await ask("Revenue?", server, AlwaysRejecting([]))
     assert out["final"] is None and "invalid tool call" in out["error"]
+
+
+async def test_repeated_call_is_not_rerun(server):
+    llm = FakeLLM([
+        call("get_dimensions", {"metrics": ["canceled_orders"]}),
+        call("get_dimensions", {"metrics": ["canceled_orders"]}, id="c2"),
+        final({"cannot_answer": "No category for orders."}),
+    ])
+    out = await ask("Canceled orders by category?", server, llm)
+    first, second = out["trace"]
+    assert "not_available" in first["result"]
+    assert "already made this exact call" in second["result"]["error"]
+    assert out["final"] == {"cannot_answer": "No category for orders."}
+
+
+async def test_rejected_tool_call_gets_feedback_and_can_retry_the_tool(server):
+    from ttym.llm import ToolCallRejected
+
+    class RejectOnce(FakeLLM):
+        async def chat(self, messages, tools=None, tool_choice=None):
+            if not self.sent:
+                self.sent.append({"first": True})
+                raise ToolCallRejected("rejected", detail="parameters did not match the schema")
+            return await super().chat(messages, tools, tool_choice)
+
+    llm = RejectOnce([
+        call("get_dimensions", {"metrics": ["canceled_orders"]}),
+        final({"cannot_answer": "No category for orders."}),
+    ])
+    out = await ask("Cancellation rate for health_beauty?", server, llm)
+    retry = llm.sent[1]
+    assert retry["tools"] and "parameters did not match the schema" in retry["messages"][-1]["content"]
+    assert [s["tool"] for s in out["trace"]] == ["get_dimensions"]
+    assert out["final"] == {"cannot_answer": "No category for orders."}
+    assert out["rejected"] == ["parameters did not match the schema"]
+
+
+async def test_final_answer_inside_an_invented_tool_is_used(server):
+    import json as _json
+
+    from ttym.llm import ToolCallRejected
+
+    wrapped = _json.dumps({"name": "JSON", "arguments": {"cannot_answer": "No category for orders."}})
+
+    class WrapsFinal(FakeLLM):
+        async def chat(self, messages, tools=None, tool_choice=None):
+            if self.script:
+                return await super().chat(messages, tools, tool_choice)
+            raise ToolCallRejected("rejected", detail="attempted to call tool 'JSON'", generation=wrapped)
+
+    llm = WrapsFinal([call("get_dimensions", {"metrics": ["canceled_orders"]})])
+    out = await ask("Cancellation rate for health_beauty?", server, llm)
+    assert out["final"] == {"cannot_answer": "No category for orders."} and out["rejected"]
+
+
+def test_a_real_tool_or_bad_answer_is_not_salvaged():
+    from ttym.agent import _final_from_rejected
+    names = {"list_metrics", "get_dimensions", "query_metrics"}
+    assert _final_from_rejected('{"name": "get_dimensions", "arguments": {"cannot_answer": "x"}}', names) is None
+    assert _final_from_rejected('{"name": "json", "arguments": {"note": "x"}}', names) is None
+    assert _final_from_rejected("not json", names) is None
+    assert _final_from_rejected('{"name": "json", "arguments": "{\\"cannot_answer\\": \\"x\\"}"}', names) == {"cannot_answer": "x"}
+
+
+async def test_follow_up_sees_previous_question_and_query(server):
+    llm = FakeLLM([final({"cannot_answer": "x"})])
+    previous = {"question": "Top 5 product categories by revenue",
+                "query": {"metrics": ["revenue"], "group_by": ["product__category"], "limit": 5}}
+    await ask("Which of these had the most canceled orders?", server, llm, previous=previous)
+    text = llm.sent[0]["messages"][1]["content"]
+    assert '"Top 5 product categories by revenue"' in text and '"product__category"' in text
+    assert '"Which of these had the most canceled orders?"' in text
+
+
+async def test_first_question_is_sent_as_is(server):
+    llm = FakeLLM([final({"cannot_answer": "x"})])
+    await ask("Revenue in 2017?", server, llm)
+    assert llm.sent[0]["messages"][1]["content"] == "Revenue in 2017?"

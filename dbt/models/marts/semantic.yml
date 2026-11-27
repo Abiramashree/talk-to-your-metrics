@@ -85,6 +85,10 @@ semantic_models:
       - name: freight_sum
         agg: sum
         expr: freight
+      - name: orders_with_items
+        description: Distinct orders among these items.
+        agg: count_distinct
+        expr: order_id
 
   - name: payments
     description: One row per payment on an order (orders can be split across payments).
@@ -111,6 +115,10 @@ semantic_models:
       - name: amount_sum
         agg: sum
         expr: amount
+      - name: orders_with_payments
+        description: Distinct orders among these payments.
+        agg: count_distinct
+        expr: order_id
 
   - name: customers
     description: One row per person (customer_unique_id), with their order count.
@@ -203,6 +211,33 @@ metrics:
     config:
       meta:
         synonyms: [orders placed, number of orders, order volume]
+
+  - name: orders_by_category
+    label: Orders by product category
+    description: >-
+      Orders that contain at least one item of the product category, any status; filter order__status for
+      canceled or delivered ones. An order with items in two categories counts in both, so categories add up
+      to more than all orders. Orders with no items (mostly canceled or unavailable ones) have no category
+      and are not counted.
+    type: simple
+    type_params:
+      measure: orders_with_items
+    config:
+      meta:
+        synonyms: [orders per category, orders containing a category, canceled orders by category]
+
+  - name: orders_by_payment_type
+    label: Orders by payment type
+    description: >-
+      Orders that used the payment type, any status; filter order__status for canceled or delivered ones.
+      An order paid two ways (for example a voucher plus a card) counts in both, so payment types add up to
+      more than all orders.
+    type: simple
+    type_params:
+      measure: orders_with_payments
+    config:
+      meta:
+        synonyms: [orders per payment method, orders paid by boleto, orders paid by credit card]
 
   - name: delivered_orders
     label: Delivered orders

@@ -72,6 +72,11 @@ class SemanticLayer:
         self.bare = bare
         self._metrics = {m.name: m for m in self._mf.list_metrics()}
         self._values: dict[str, list[str]] = {}
+        # Which metrics each categorical dimension works with, so a mismatch can be explained.
+        self._dimension_metrics: dict[str, list[str]] = {}
+        for name in sorted(self._metrics):
+            for d in self._categorical(name):
+                self._dimension_metrics.setdefault(d, []).append(name)
 
     def view(self, bare: bool) -> SemanticLayer:
         """The same engine with metadata on or off. dbt keeps global state, so load it once per process."""
@@ -106,7 +111,9 @@ class SemanticLayer:
         time = {"name": "metric_time", "grains": list(GRAINS)}
         if not self.bare:
             time["description"] = "When the order was placed. Group by metric_time__<grain>; filter with start/end."
-        return {"metrics": metrics, "time": time, "dimensions": dims}
+        shared = self._shared_dimensions(metrics)
+        unavailable = [self._unavailable(metrics, d) for d in sorted(self._dimension_metrics) if d not in shared]
+        return {"metrics": metrics, "time": time, "dimensions": dims, "not_available": unavailable}
 
     # --- query -----------------------------------------------------------
 
@@ -121,8 +128,8 @@ class SemanticLayer:
                 f"grouping would change their meaning. Query them without start, end or metric_time."
             )
         dims = self._shared_dimensions(q.metrics)
-        group_by = [self._check_group_by(g, dims, allow_time=not all_time) for g in q.group_by]
-        where = [self._render_filter(f, dims) for f in q.filters]
+        group_by = [self._check_group_by(g, dims, q.metrics, allow_time=not all_time) for g in q.group_by]
+        where = [self._render_filter(f, dims, q.metrics) for f in q.filters]
         start, end = self._parse_date(q.start, "start"), self._parse_date(q.end, "end")
         if start and end and start > end:
             raise QueryError(f"start {q.start} is after end {q.end}.")
@@ -178,33 +185,52 @@ class SemanticLayer:
         m = self._metrics[metric]
         return bool(m.config and (m.config.meta or {}).get("all_time"))
 
+    def _categorical(self, metric: str) -> dict:
+        return {d.dunder_name: d for d in self._metrics[metric].dimensions
+                if not d.dunder_name.startswith("metric_time") and not _TIME_DIMENSION.search(d.dunder_name)}
+
+    def _unavailable(self, metrics: list[str], dimension: str) -> dict:
+        """Why these metrics can't be split by a dimension, and which metrics can."""
+        item: dict[str, Any] = {"name": dimension, "works_with": self._dimension_metrics.get(dimension, [])}
+        if not self.bare:
+            if any(self._is_all_time(m) for m in metrics):
+                why = "these metrics count customers over all time, not orders, so order attributes don't apply"
+            else:
+                why = LEVEL_REASONS.get(dimension.split("__", 1)[0], "it is recorded at a different level of detail than these metrics")
+            item["why"] = why
+        return item
+
+    def _mismatch(self, verb: str, name: str, metrics: list[str], dims: dict) -> QueryError:
+        if name in self._dimension_metrics:
+            u = self._unavailable(metrics, name)
+            why = f" because {u['why']}" if "why" in u else ""
+            return QueryError(f"Cannot {verb} '{name}' with {metrics}{why}. It works with: {u['works_with']}.")
+        return QueryError(f"Cannot {verb} '{_short(name)}' with these metrics. Available: {sorted(dims) or 'none'}.")
+
     def _shared_dimensions(self, metrics: list[str]) -> dict:
         """Categorical dimensions every requested metric can be grouped and filtered by."""
-        per_metric = []
-        for m in metrics:
-            per_metric.append(
-                {d.dunder_name: d for d in self._metrics[m].dimensions
-                 if not d.dunder_name.startswith("metric_time") and not _TIME_DIMENSION.search(d.dunder_name)}
-            )
+        per_metric = [self._categorical(m) for m in metrics]
         shared = set.intersection(*(set(p) for p in per_metric))
         return {name: per_metric[0][name] for name in shared}
 
-    def _check_group_by(self, name: str, dims: dict, allow_time: bool = True) -> str:
+    def _check_group_by(self, name: str, dims: dict, metrics: list[str], allow_time: bool = True) -> str:
         if name.startswith("metric_time"):
             grain = name.removeprefix("metric_time").removeprefix("__") or "day"
             if grain not in GRAINS:
                 raise QueryError(f"Time grain '{_short(grain)}' is not supported. Use metric_time__<grain> with one of {list(GRAINS)}.")
             return f"metric_time__{grain}"
         if name not in dims:
+            if name in self._dimension_metrics:
+                raise self._mismatch("group by", name, metrics, dims)
             time = " and metric_time__<grain>" if allow_time else ""
             raise QueryError(f"Cannot group by '{_short(name)}' with these metrics. Available: {sorted(dims) or 'none'}{time}.")
         return name
 
-    def _render_filter(self, f: Filter, dims: dict) -> str:
+    def _render_filter(self, f: Filter, dims: dict, metrics: list[str]) -> str:
         if f.dimension.startswith("metric_time"):
             raise QueryError("Filter time with start and end (YYYY-MM-DD), not with a filter.")
         if f.dimension not in dims:
-            raise QueryError(f"Cannot filter by '{_short(f.dimension)}' with these metrics. Available: {sorted(dims)}.")
+            raise self._mismatch("filter by", f.dimension, metrics, dims)
         op = f.operator.lower().strip()
         if op not in OPERATORS:
             raise QueryError(f"Operator '{_short(f.operator)}' is not supported. Use one of {list(OPERATORS)}.")
@@ -233,6 +259,14 @@ class SemanticLayer:
             return dt.datetime.combine(dt.date.fromisoformat(value), dt.time())
         except (TypeError, ValueError):
             raise QueryError(f"{label} must be a date like 2017-01-01, got {_short(str(value))!r}.") from None
+
+
+# Why a dimension doesn't apply to metrics at another level of detail, by the dimension's entity.
+LEVEL_REASONS = {
+    "product": "product category belongs to items, and one order can contain items from several categories",
+    "payment": "payment type belongs to payments, and one order can be paid in several ways",
+    "order": "it describes orders, and these metrics are not counted per order",
+}
 
 
 def _short(text: str, limit: int = 60) -> str:

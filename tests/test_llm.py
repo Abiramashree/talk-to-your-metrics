@@ -101,3 +101,11 @@ async def test_tool_use_failed_is_its_own_error():
     body = '{"error":{"code":"tool_use_failed","message":"attempted to call tool json"}}'
     with pytest.raises(ToolCallRejected):
         await client(httpx.Response(400, text=body)).chat([])
+
+
+def test_rejection_detail_keeps_reason_and_generation():
+    from ttym.llm import _rejection_detail
+    body = '{"error":{"message":"Tool choice is none, but model called a tool","code":"tool_use_failed","failed_generation":"{\\"name\\": \\"get_dimensions\\"}"}}'
+    detail = _rejection_detail(body)
+    assert "Tool choice is none" in detail and "get_dimensions" in detail
+    assert _rejection_detail("not json") == "not json"

@@ -1,0 +1,15 @@
+.git
+.github
+.venv
+.env
+.env.*
+data
+notes
+bench
+tests
+dbt/target
+dbt/logs
+dbt/.user.yml
+**/__pycache__
+.pytest_cache
+*.duckdb

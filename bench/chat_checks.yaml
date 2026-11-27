@@ -1,0 +1,82 @@
+# Short conversations for the web chat: follow-ups, fragments and references. Each turn is sent with the
+# previous question and its query, as the page sends it. Written after the benchmark; not part of it.
+# Correct answers are SQL on the raw tables; "decline" means the right reply is a question back, not a guess.
+
+- id: k1
+  turns:
+    - question: Top 5 product categories by revenue
+      kinds: [key, money]
+      sql: |
+        select coalesce(t.product_category_name_english, p.product_category_name), sum(i.price)
+        from raw.order_items i join raw.orders o using (order_id) join raw.products p using (product_id)
+        left join raw.product_category_name_translation t on t.product_category_name = p.product_category_name
+        where o.order_status = 'delivered'
+        group by 1 order by 2 desc limit 5
+    - question: Which of these had the most canceled orders?
+      kinds: [key, count]
+      top_row: true
+      sql: |
+        with cat as (
+          select i.order_id, o.order_status, i.price,
+                 coalesce(t.product_category_name_english, p.product_category_name) as category
+          from raw.order_items i join raw.orders o using (order_id) join raw.products p using (product_id)
+          left join raw.product_category_name_translation t on t.product_category_name = p.product_category_name
+        ), top5 as (
+          select category from cat where order_status = 'delivered' group by 1 order by sum(price) desc limit 5
+        )
+        select category, count(distinct order_id) from cat
+        where order_status = 'canceled' and category in (select category from top5)
+        group by 1 order by 2 desc limit 2
+
+- id: k2
+  turns:
+    - question: Canceled orders by state
+      kinds: [key, count]
+      sql: |
+        select c.customer_state, count(*) from raw.orders o join raw.customers c using (customer_id)
+        where o.order_status = 'canceled' group by 1 order by 1
+    - question: by category?
+      kinds: [key, count]
+      sql: |
+        select coalesce(t.product_category_name_english, p.product_category_name) as category, count(distinct i.order_id)
+        from raw.order_items i join raw.orders o using (order_id) join raw.products p using (product_id)
+        left join raw.product_category_name_translation t on t.product_category_name = p.product_category_name
+        where o.order_status = 'canceled' and coalesce(t.product_category_name_english, p.product_category_name) is not null
+        group by 1 order by 1
+
+- id: k3
+  turns:
+    - question: Revenue in 2017
+      kinds: [money]
+      sql: |
+        select sum(i.price) from raw.order_items i join raw.orders o using (order_id)
+        where o.order_status = 'delivered'
+          and o.order_purchase_timestamp >= '2017-01-01' and o.order_purchase_timestamp < '2018-01-01'
+    - question: and 2018?
+      kinds: [money]
+      sql: |
+        select sum(i.price) from raw.order_items i join raw.orders o using (order_id)
+        where o.order_status = 'delivered'
+          and o.order_purchase_timestamp >= '2018-01-01' and o.order_purchase_timestamp < '2019-01-01'
+
+- id: k4
+  turns:
+    - question: Which of these had the most late deliveries?
+      decline: true
+
+- id: k5
+  turns:
+    - question: Delivered orders by payment type in 2018
+      kinds: [key, count]
+      sql: |
+        select p.payment_type, count(distinct o.order_id) from raw.orders o join raw.order_payments p using (order_id)
+        where o.order_status = 'delivered'
+          and o.order_purchase_timestamp >= '2018-01-01' and o.order_purchase_timestamp < '2019-01-01'
+        group by 1 order by 1
+    - question: same but canceled
+      kinds: [key, count]
+      sql: |
+        select p.payment_type, count(distinct o.order_id) from raw.orders o join raw.order_payments p using (order_id)
+        where o.order_status = 'canceled'
+          and o.order_purchase_timestamp >= '2018-01-01' and o.order_purchase_timestamp < '2019-01-01'
+        group by 1 order by 1

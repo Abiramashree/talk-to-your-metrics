@@ -71,4 +71,4 @@ async def test_stdio_subprocess():
     params = StdioServerParameters(command=sys.executable, args=["-m", "ttym.mcp_server"])
     async with Client(params) as client:
         out = (await client.call_tool("list_metrics", {})).structured_content
-        assert len(out["metrics"]) == 18
+        assert len(out["metrics"]) == 20

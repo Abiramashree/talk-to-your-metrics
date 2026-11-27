@@ -22,7 +22,7 @@ def test_dev_answers_match(layer, answers, qid):
 def test_list_metrics(layer):
     out = layer.list_metrics()
     names = {m["name"] for m in out["metrics"]}
-    assert len(names) == 18 and {"revenue", "repeat_customers", "late_delivery_rate"} <= names
+    assert len(names) == 20 and {"revenue", "repeat_customers", "late_delivery_rate"} <= names
     revenue = next(m for m in out["metrics"] if m["name"] == "revenue")
     assert "Excludes freight" in revenue["description"] and "sales" in revenue["synonyms"]
     assert out["today"] == "2018-10-17"
@@ -135,3 +135,30 @@ def test_scoring_kinds_cover_every_expected_answer(answers):
     for qid, a in answers.items():
         assert len(kinds[qid]) == len(a["columns"]), qid
         assert set(kinds[qid]) <= {"key", "count", "money", "average", "rate"}
+
+
+def test_cross_level_dimensions_are_explained(layer):
+    from ttym.core import Filter, Query, QueryError
+    d = layer.get_dimensions(["canceled_orders"])
+    category = next(u for u in d["not_available"] if u["name"] == "product__category")
+    assert "several categories" in category["why"] and "orders_by_category" in category["works_with"]
+    assert "canceled_orders" not in category["works_with"]
+    with pytest.raises(QueryError, match="several categories.*orders_by_category"):
+        layer.query(Query(metrics=["canceled_orders"], group_by=["product__category"]))
+    with pytest.raises(QueryError, match="paid in several ways.*orders_by_payment_type"):
+        layer.query(Query(metrics=["orders"], filters=[Filter(dimension="payment__payment_type", operator="=", value="boleto")]))
+    with pytest.raises(QueryError, match="over all time"):
+        layer.query(Query(metrics=["repeat_customers"], group_by=["order__state"]))
+    bare = layer.view(bare=True).get_dimensions(["canceled_orders"])
+    assert all("why" not in u for u in bare["not_available"])
+
+
+def test_orders_by_category_and_payment_type_match_raw_sql(layer):
+    from ttym.core import Filter, Query
+    canceled = layer.query(Query(metrics=["orders_by_category"], filters=[
+        Filter(dimension="order__status", operator="=", value="canceled"),
+        Filter(dimension="product__category", operator="=", value="health_beauty")]))
+    assert canceled["rows"] == [[36]]
+    paid = layer.query(Query(metrics=["orders_by_payment_type"], group_by=["payment__payment_type"],
+                             filters=[Filter(dimension="order__status", operator="=", value="delivered")]))
+    assert dict(map(tuple, paid["rows"])) == {"boleto": 19191, "credit_card": 74304, "debit_card": 1485, "voucher": 3679}

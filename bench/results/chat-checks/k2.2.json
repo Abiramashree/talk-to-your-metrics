@@ -1,0 +1,554 @@
+{
+ "turn": "k2.2",
+ "question": "by category?",
+ "previous": {
+  "question": "Canceled orders by state",
+  "query": {
+   "group_by": [
+    "order__state"
+   ],
+   "metrics": [
+    "canceled_orders"
+   ]
+  }
+ },
+ "seconds": 28.2,
+ "final": {
+  "answer": "Canceled orders by product category:",
+  "columns": [
+   "product__category",
+   "orders_by_category"
+  ],
+  "rows": [
+   [
+    "air_conditioning",
+    2
+   ],
+   [
+    "art",
+    1
+   ],
+   [
+    "audio",
+    1
+   ],
+   [
+    "auto",
+    24
+   ],
+   [
+    "baby",
+    16
+   ],
+   [
+    "bed_bath_table",
+    18
+   ],
+   [
+    "books_general_interest",
+    7
+   ],
+   [
+    "christmas_supplies",
+    1
+   ],
+   [
+    "computers_accessories",
+    35
+   ],
+   [
+    "consoles_games",
+    8
+   ],
+   [
+    "construction_tools_construction",
+    2
+   ],
+   [
+    "construction_tools_lights",
+    1
+   ],
+   [
+    "construction_tools_safety",
+    2
+   ],
+   [
+    "cool_stuff",
+    15
+   ],
+   [
+    "costruction_tools_garden",
+    2
+   ],
+   [
+    "diapers_and_hygiene",
+    1
+   ],
+   [
+    "drinks",
+    1
+   ],
+   [
+    "dvds_blu_ray",
+    2
+   ],
+   [
+    "electronics",
+    6
+   ],
+   [
+    "fashion_bags_accessories",
+    6
+   ],
+   [
+    "fashion_male_clothing",
+    1
+   ],
+   [
+    "fashion_shoes",
+    2
+   ],
+   [
+    "fixed_telephony",
+    3
+   ],
+   [
+    "food",
+    1
+   ],
+   [
+    "food_drink",
+    2
+   ],
+   [
+    "furniture_decor",
+    24
+   ],
+   [
+    "furniture_living_room",
+    2
+   ],
+   [
+    "garden_tools",
+    13
+   ],
+   [
+    "health_beauty",
+    36
+   ],
+   [
+    "home_appliances",
+    2
+   ],
+   [
+    "home_appliances_2",
+    3
+   ],
+   [
+    "home_construction",
+    1
+   ],
+   [
+    "housewares",
+    37
+   ],
+   [
+    "kitchen_dining_laundry_garden_furniture",
+    2
+   ],
+   [
+    "luggage_accessories",
+    4
+   ],
+   [
+    "market_place",
+    1
+   ],
+   [
+    "musical_instruments",
+    8
+   ],
+   [
+    "office_furniture",
+    1
+   ],
+   [
+    "pc_gamer",
+    1
+   ],
+   [
+    "perfumery",
+    14
+   ],
+   [
+    "pet_shop",
+    4
+   ],
+   [
+    "portateis_cozinha_e_preparadores_de_alimentos",
+    1
+   ],
+   [
+    "small_appliances",
+    8
+   ],
+   [
+    "sports_leisure",
+    47
+   ],
+   [
+    "stationery",
+    12
+   ],
+   [
+    "telephony",
+    16
+   ],
+   [
+    "toys",
+    31
+   ],
+   [
+    "watches_gifts",
+    20
+   ],
+   [
+    null,
+    14
+   ]
+  ]
+ },
+ "trace": [
+  {
+   "tool": "get_dimensions",
+   "arguments": {
+    "metrics": [
+     "canceled_orders"
+    ]
+   },
+   "result": {
+    "metrics": [
+     "canceled_orders"
+    ],
+    "time": {
+     "name": "metric_time",
+     "grains": [
+      "day",
+      "week",
+      "month",
+      "quarter",
+      "year"
+     ],
+     "description": "When the order was placed. Group by metric_time__<grain>; filter with start/end."
+    },
+    "dimensions": [
+     {
+      "name": "order__is_late",
+      "description": "True when delivered after the estimated date (compared as dates). Empty for orders not delivered.",
+      "values": []
+     },
+     {
+      "name": "order__review_score",
+      "description": "Review stars 1\u20135, using the latest review when an order has several. Empty when not reviewed.",
+      "values": [
+       "1",
+       "2",
+       "3",
+       "4",
+       "5"
+      ]
+     },
+     {
+      "name": "order__state",
+      "description": "Two-letter Brazilian state of the customer on the order, e.g. SP, RJ, MG.",
+      "values": [
+       "AL",
+       "BA",
+       "CE",
+       "DF",
+       "ES",
+       "GO",
+       "MA",
+       "MG",
+       "MS",
+       "MT",
+       "PA",
+       "PB",
+       "PE",
+       "PI",
+       "PR",
+       "RJ",
+       "RO",
+       "RR",
+       "RS",
+       "SC",
+       "SE",
+       "SP",
+       "TO"
+      ]
+     },
+     {
+      "name": "order__status",
+      "description": "Order status: delivered, shipped, canceled, unavailable, invoiced, processing, created, approved.",
+      "values": [
+       "canceled"
+      ]
+     }
+    ],
+    "not_available": [
+     {
+      "name": "payment__payment_type",
+      "works_with": [
+       "orders_by_payment_type",
+       "payments"
+      ],
+      "why": "payment type belongs to payments, and one order can be paid in several ways"
+     },
+     {
+      "name": "product__category",
+      "works_with": [
+       "freight",
+       "gross_merchandise_value",
+       "orders_by_category",
+       "revenue"
+      ],
+      "why": "product category belongs to items, and one order can contain items from several categories"
+     }
+    ]
+   }
+  },
+  {
+   "tool": "query_metrics",
+   "arguments": {
+    "filters": [
+     {
+      "dimension": "order__status",
+      "operator": "=",
+      "value": "canceled"
+     }
+    ],
+    "group_by": [
+     "product__category"
+    ],
+    "metrics": [
+     "orders_by_category"
+    ]
+   },
+   "result": {
+    "columns": [
+     "product__category",
+     "orders_by_category"
+    ],
+    "rows": [
+     [
+      "air_conditioning",
+      2
+     ],
+     [
+      "art",
+      1
+     ],
+     [
+      "audio",
+      1
+     ],
+     [
+      "auto",
+      24
+     ],
+     [
+      "baby",
+      16
+     ],
+     [
+      "bed_bath_table",
+      18
+     ],
+     [
+      "books_general_interest",
+      7
+     ],
+     [
+      "christmas_supplies",
+      1
+     ],
+     [
+      "computers_accessories",
+      35
+     ],
+     [
+      "consoles_games",
+      8
+     ],
+     [
+      "construction_tools_construction",
+      2
+     ],
+     [
+      "construction_tools_lights",
+      1
+     ],
+     [
+      "construction_tools_safety",
+      2
+     ],
+     [
+      "cool_stuff",
+      15
+     ],
+     [
+      "costruction_tools_garden",
+      2
+     ],
+     [
+      "diapers_and_hygiene",
+      1
+     ],
+     [
+      "drinks",
+      1
+     ],
+     [
+      "dvds_blu_ray",
+      2
+     ],
+     [
+      "electronics",
+      6
+     ],
+     [
+      "fashion_bags_accessories",
+      6
+     ],
+     [
+      "fashion_male_clothing",
+      1
+     ],
+     [
+      "fashion_shoes",
+      2
+     ],
+     [
+      "fixed_telephony",
+      3
+     ],
+     [
+      "food",
+      1
+     ],
+     [
+      "food_drink",
+      2
+     ],
+     [
+      "furniture_decor",
+      24
+     ],
+     [
+      "furniture_living_room",
+      2
+     ],
+     [
+      "garden_tools",
+      13
+     ],
+     [
+      "health_beauty",
+      36
+     ],
+     [
+      "home_appliances",
+      2
+     ],
+     [
+      "home_appliances_2",
+      3
+     ],
+     [
+      "home_construction",
+      1
+     ],
+     [
+      "housewares",
+      37
+     ],
+     [
+      "kitchen_dining_laundry_garden_furniture",
+      2
+     ],
+     [
+      "luggage_accessories",
+      4
+     ],
+     [
+      "market_place",
+      1
+     ],
+     [
+      "musical_instruments",
+      8
+     ],
+     [
+      "office_furniture",
+      1
+     ],
+     [
+      "pc_gamer",
+      1
+     ],
+     [
+      "perfumery",
+      14
+     ],
+     [
+      "pet_shop",
+      4
+     ],
+     [
+      "portateis_cozinha_e_preparadores_de_alimentos",
+      1
+     ],
+     [
+      "small_appliances",
+      8
+     ],
+     [
+      "sports_leisure",
+      47
+     ],
+     [
+      "stationery",
+      12
+     ],
+     [
+      "telephony",
+      16
+     ],
+     [
+      "toys",
+      31
+     ],
+     [
+      "watches_gifts",
+      20
+     ],
+     [
+      null,
+      14
+     ]
+    ],
+    "truncated": false,
+    "sql": "SELECT\n  product__category\n  , COUNT(DISTINCT orders_by_category) AS orders_by_category\nFROM (\n  SELECT\n    products_src_10000.category AS product__category\n    , orders_src_10000.status AS order__status\n    , order_items_src_10000.order_id AS orders_by_category\n  FROM \"olist\".\"main\".\"fct_order_items\" order_items_src_10000\n  LEFT OUTER JOIN\n    \"olist\".\"main\".\"dim_products\" products_src_10000\n  ON\n    order_items_src_10000.product_id = products_src_10000.product_id\n  LEFT OUTER JOIN\n    \"olist\".\"main\".\"fct_orders\" orders_src_10000\n  ON\n    order_items_src_10000.order_id = orders_src_10000.order_id\n) subq_8\nWHERE order__status = 'canceled'\nGROUP BY\n  product__category\nORDER BY product__category",
+    "definitions": {
+     "orders_by_category": "Orders that contain at least one item of the product category, any status; filter order__status for canceled or delivered ones. An order with items in two categories counts in both, so categories add up to more than all orders. Orders with no items (mostly canceled or unavailable ones) have no category and are not counted."
+    }
+   }
+  }
+ ],
+ "usage": {
+  "requests": 3,
+  "prompt_tokens": 4220,
+  "cached_tokens": 1536,
+  "completion_tokens": 906
+ }
+}
