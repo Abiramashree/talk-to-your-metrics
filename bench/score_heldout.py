@@ -45,7 +45,16 @@ def summarise(qs: list[dict], gold: dict, runs: dict[str, dict], current: str | 
         if run is None:
             continue
         d = diagnose(q, gold.get(q["id"]), run, execute)
-        rows.append({"id": q["id"], "trap": q["trap"], **d, "tokens": tokens(run),
+        checks = run.get("checks") or []
+        found = [f for c in checks for f in c.get("found", [])]
+        # Caught: the answer the model first gave was wrong and the one returned after the checks is right.
+        # Broke: the reverse. Both are None when no check ran.
+        caught = broke = None
+        if checks:
+            before = diagnose(q, gold.get(q["id"]), {**run, "final": checks[0]["final_before"]})["correct"]
+            caught, broke = (not before) and d["correct"], before and not d["correct"]
+        rows.append({"id": q["id"], "trap": q["trap"], **d, "checks_found": found, "caught": caught, "broke": broke,
+                     "tokens": tokens(run),
                      "requests": run.get("usage", {}).get("requests", 0), "seconds": run.get("seconds"),
                      "stale": current is not None and run.get("fingerprint") != current})
     n, correct = len(rows), sum(r["correct"] for r in rows)
@@ -55,6 +64,9 @@ def summarise(qs: list[dict], gold: dict, runs: dict[str, dict], current: str | 
             "stale": sum(r["stale"] for r in rows),
             "mean_tokens": round(sum(measured) / len(measured)) if measured else None,
             "failures": dict(Counter(r["tag"] for r in rows if not r["correct"]).most_common()),
+            "checks": {"fired": sum(bool(r["checks_found"]) for r in rows), "caught": sum(bool(r["caught"]) for r in rows),
+                       "broke": sum(bool(r["broke"]) for r in rows),
+                       "by_check": dict(Counter(f for r in rows for f in r["checks_found"]).most_common())},
             "questions": rows}
 
 
@@ -74,6 +86,9 @@ def main() -> int:
               f"mean tokens {s['mean_tokens']}  stale {s['stale']}")
         for tag, count in s["failures"].items():
             print(f"   {count}  {tag}")
+        if s["checks"]["fired"]:
+            c = s["checks"]
+            print(f"   checks fired on {c['fired']}, caught {c['caught']} wrong answers, broke {c['broke']}: {c['by_check']}")
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "summary.json").write_text(json.dumps(summary, indent=2, default=str) + "\n")
     return 0

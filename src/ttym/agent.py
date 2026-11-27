@@ -10,6 +10,7 @@ import asyncio
 import copy
 import json
 import re
+from collections.abc import Callable
 from typing import Any
 
 from mcp import Client
@@ -96,12 +97,15 @@ def _user_message(question: str, previous: dict | None) -> str:
             "If this refers to the earlier question (these, that, same, instead), build on it; otherwise ignore it.")
 
 
-async def ask(question: str, server: MCPServer, llm: LLM, system: str = SYSTEM, previous: dict | None = None) -> dict:
+async def ask(question: str, server: MCPServer, llm: LLM, system: str = SYSTEM, previous: dict | None = None,
+              check: Callable[[dict, list[dict]], dict] | None = None) -> dict:
     """Answer one question. Returns the final answer, every tool call, and token usage.
 
-    previous: {"question": ..., "query": {...} or None}, the last question in the conversation."""
+    previous: {"question": ..., "query": {...} or None}, the last question in the conversation.
+    check: called with (final, trace) when the model gives a final answer; returns {"final": ..., "feedback": str
+    or None, "found": [...]}. Feedback is sent back to the model once, so it can fix the answer (the harness)."""
     try:
-        return await _ask(_user_message(question, previous), server, llm, system)
+        return await _ask(_user_message(question, previous), server, llm, system, check)
     except BaseExceptionGroup as group:
         # The MCP client's task group wraps errors raised inside it; surface the model error itself
         # so callers can handle it (quota, network) instead of seeing an opaque group.
@@ -116,11 +120,11 @@ def _first_leaf(group: BaseExceptionGroup) -> BaseException:
     return error
 
 
-async def _ask(question: str, server: MCPServer, llm: LLM, system: str) -> dict:
+async def _ask(question: str, server: MCPServer, llm: LLM, system: str, check=None) -> dict:
     trace: list[dict] = []
     rejected: list[str] = []  # tool calls the provider rejected, kept for debugging
     try:
-        out = await _loop(question, server, llm, system, trace, rejected)
+        out = await _loop(question, server, llm, system, trace, rejected, check)
         if rejected:
             out["rejected"] = rejected
         return out
@@ -133,7 +137,8 @@ async def _ask(question: str, server: MCPServer, llm: LLM, system: str) -> dict:
         raise
 
 
-async def _loop(question: str, server: MCPServer, llm: LLM, system: str, trace: list[dict], rejected: list[str]) -> dict:
+async def _loop(question: str, server: MCPServer, llm: LLM, system: str, trace: list[dict], rejected: list[str],
+                check=None) -> dict:
     async with Client(server) as client:
         tools = [
             {"type": "function", "function": {"name": t.name, "description": t.description or "",
@@ -142,6 +147,7 @@ async def _loop(question: str, server: MCPServer, llm: LLM, system: str, trace: 
         ]
         messages: list[dict] = [{"role": "system", "content": system}, {"role": "user", "content": question}]
         reminded = False
+        checks: list[dict] = []  # what the answer checks found, when a check is given
         seen: set[str] = set()  # tool calls already made, so a repeated call can't burn the step budget
         while True:
             calls_left = MAX_TOOL_CALLS - len(trace)
@@ -153,34 +159,32 @@ async def _loop(question: str, server: MCPServer, llm: LLM, system: str, trace: 
                 salvaged = _final_from_rejected(e.generation, {t["function"]["name"] for t in tools})
                 if salvaged is not None:
                     # gpt-oss wrapped its final answer in a call to a tool that doesn't exist ("json"):
-                    # the answer itself is valid, so use it.
+                    # the answer itself is valid, so use it as if it had been written as text.
                     rejected.append(e.detail[:300])
-                    return {"final": salvaged, "trace": trace, "usage": dict(llm.usage)}
-                # The provider rejected a malformed tool call. First time: say why and let the model try the
-                # tool again, since it often still needs one. Otherwise retry with no tools, so it has to
-                # reply with the final JSON as text (gpt-oss sometimes wraps that in an invented "json" tool).
-                rejected.append(e.detail[:300])
-                message = None
-                if offered and len(rejected) == 1:
-                    feedback = {"role": "user", "content": f"Your last tool call was rejected as invalid: {e.detail[:300]}. "
-                                "Call a tool again with arguments that match its schema, or reply with the final JSON."}
-                    try:
-                        message = await llm.chat(messages + [feedback], offered, "auto")
-                    except ToolCallRejected as again:
-                        rejected.append(again.detail[:300])
-                if message is None:
-                    try:
-                        message = await llm.chat(messages, None)
-                    except ToolCallRejected as last:
-                        # Still calling a tool when none is offered: the run ends without an answer (scored wrong).
-                        rejected.append(last.detail[:300])
-                        return {"final": None, "error": f"invalid tool call after the no-tools retry: {str(last)[:200]}",
-                                "trace": trace, "usage": dict(llm.usage)}
+                    message = {"role": "assistant", "content": json.dumps(salvaged)}
+                else:
+                    message = await _recover(e, messages, offered, llm, rejected)
+                    if isinstance(message, dict) and "final" in message and "role" not in message:
+                        return {**message, "trace": trace, "usage": dict(llm.usage)}
             tool_calls = message.get("tool_calls") or []
             if not tool_calls:
                 final = _final(message.get("content", ""))
+                if final is not None and check is not None and not checks:
+                    verdict = check(final, trace)
+                    checks.append({"final_before": final, "found": verdict.get("found", []),
+                                   "feedback": verdict.get("feedback")})
+                    if verdict.get("feedback") and calls_left > 0:
+                        messages += [{"role": "assistant", "content": message.get("content") or json.dumps(final)},
+                                     {"role": "user", "content": verdict["feedback"]}]
+                        continue
+                    final = verdict["final"]
+                elif final is not None and check is not None:
+                    final = check(final, trace)["final"]  # after the one feedback round, only the copy fix applies
                 if final is not None:
-                    return {"final": final, "trace": trace, "usage": dict(llm.usage)}
+                    out = {"final": final, "trace": trace, "usage": dict(llm.usage)}
+                    if checks:
+                        out["checks"] = checks
+                    return out
                 if reminded or calls_left <= 0:
                     return {"final": None, "error": "no valid final answer", "content": message.get("content"),
                             "trace": trace, "usage": dict(llm.usage)}
@@ -208,6 +212,30 @@ async def _loop(question: str, server: MCPServer, llm: LLM, system: str, trace: 
                         result = {"error": r.content[0].text} if r.is_error else r.structured_content
                 trace.append({"tool": name, "arguments": args, "result": result})
                 messages.append({"role": "tool", "tool_call_id": call["id"], "content": json.dumps(result, default=str)})
+
+
+async def _recover(e: ToolCallRejected, messages: list[dict], offered, llm: LLM, rejected: list[str]) -> dict:
+    """The provider rejected a malformed tool call. First time: say why and let the model try the tool again,
+    since it often still needs one. Otherwise retry with no tools, so it has to reply with the final JSON as
+    text (gpt-oss sometimes wraps that in an invented "json" tool).
+    Returns the next assistant message, or {"final": None, "error": ...} when the run has to end."""
+    rejected.append(e.detail[:300])
+    message = None
+    if offered and len(rejected) == 1:
+        feedback = {"role": "user", "content": f"Your last tool call was rejected as invalid: {e.detail[:300]}. "
+                    "Call a tool again with arguments that match its schema, or reply with the final JSON."}
+        try:
+            message = await llm.chat(messages + [feedback], offered, "auto")
+        except ToolCallRejected as again:
+            rejected.append(again.detail[:300])
+    if message is None:
+        try:
+            message = await llm.chat(messages, None)
+        except ToolCallRejected as last:
+            # Still calling a tool when none is offered: the run ends without an answer (scored wrong).
+            rejected.append(last.detail[:300])
+            return {"final": None, "error": f"invalid tool call after the no-tools retry: {str(last)[:200]}"}
+    return message
 
 
 def main() -> None:

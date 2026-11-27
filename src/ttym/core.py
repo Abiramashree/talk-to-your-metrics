@@ -115,6 +115,11 @@ class SemanticLayer:
         unavailable = [self._unavailable(metrics, d) for d in sorted(self._dimension_metrics) if d not in shared]
         return {"metrics": metrics, "time": time, "dimensions": dims, "not_available": unavailable}
 
+    def dimension_values(self, metric: str, name: str) -> list[str]:
+        """Every value of a dimension for a metric (get_dimensions shows at most 30)."""
+        self._check_metrics([metric])
+        return self._dimension_values([metric], name, limit=10**9)
+
     # --- query -----------------------------------------------------------
 
     def query(self, q: Query) -> dict:

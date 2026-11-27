@@ -1,6 +1,7 @@
 """Run the held-out questions through a setup and save every run with its full trace.
 
     python bench/run_heldout.py --setup C                 # all 30, skipping runs saved for the same fingerprint
+    python bench/run_heldout.py --setup H                 # the same with the harness
     python bench/run_heldout.py --setup C --ids h01 h25
 
 Runs go to bench/results/heldout/<setup>/, the log to bench/results/logs/heldout-<setup>.log.
@@ -22,7 +23,7 @@ sys.path.insert(0, str(HERE))
 from run import run_questions  # noqa: E402
 from ttym.llm import LLM, load_env  # noqa: E402
 
-SETUPS = ("C",)
+SETUPS = ("C", "H")  # C = semantic layer modeled for agents; H = C with the harness
 RESULTS = HERE / "results"
 
 

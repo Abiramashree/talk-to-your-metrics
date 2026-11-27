@@ -110,3 +110,24 @@ async def test_heldout_runs_are_saved_scored_and_marked_stale_when_the_prompt_ch
     s = score_heldout.summarise(run_heldout.questions(), GOLD, runs, current, execute)
     assert (s["scored"], s["correct"], s["stale"], s["failures"]) == (1, 1, 0, {})
     assert score_heldout.summarise(run_heldout.questions(), GOLD, runs, "another", execute)["stale"] == 1
+
+
+@pytest.mark.anyio
+async def test_a_harness_run_records_its_checks_and_counts_a_caught_answer(tmp_path, execute):
+    # h01 "last quarter": the model first queries all-time revenue; the date check sends it back; it fixes the dates.
+    wrong = {"metrics": ["revenue"]}
+    right = QUESTIONS["h01"]["layer"]
+    script = [call("query_metrics", wrong), final({"answer": "x", "columns": ["revenue"], "rows": execute(wrong)}),
+              call("query_metrics", right, id="c2"), final({"answer": "x", "columns": ["revenue"], "rows": GOLD["h01"]})]
+
+    def make():
+        llm = FakeLLM(list(script))
+        llm.model = "openai/gpt-oss-120b"
+        return llm
+
+    out = tmp_path / "H"
+    await run_heldout.run_questions(run_heldout.questions(["h01"]), "H", out, tmp_path / "log", make)
+    runs = {"h01": json.loads((out / "h01.json").read_text())}
+    assert runs["h01"]["checks"][0]["found"] == ["dates"] and runs["h01"]["harness"]["metrics"][0] == "revenue"
+    s = score_heldout.summarise(run_heldout.questions(), GOLD, runs, None, execute)
+    assert s["correct"] == 1 and s["checks"] == {"fired": 1, "caught": 1, "broke": 0, "by_check": {"dates": 1}}

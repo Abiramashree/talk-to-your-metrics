@@ -1,0 +1,92 @@
+# Verified queries: checked question -> query pairs the harness shows the model for similar questions.
+# Written in the semantic layer's names, so they stay valid while the metrics do (tests/test_harness.py runs
+# each one and compares it with the correct answer from SQL on the raw tables).
+#
+# Taken, without picking, from every standalone question written before the held-out set: the benchmark's
+# dev questions (d), the app checks (c) and the first turns of the chat checks (k). Left out: benchmark test
+# questions, k3.1 (the same question as test t01) and k4.1 (only makes sense in a conversation).
+
+- question: What was revenue in the first quarter of 2018?
+  source: d01
+  query: {metrics: [revenue], start: '2018-01-01', end: '2018-03-31'}
+
+- question: How many orders placed in March 2018 were delivered?
+  source: d02
+  query: {metrics: [delivered_orders], start: '2018-03-01', end: '2018-03-31'}
+
+- question: What was the average review score for orders placed in 2018?
+  source: d03
+  query: {metrics: [average_review_score], start: '2018-01-01', end: '2018-12-31'}
+
+- question: What is the overall late delivery rate?
+  source: d04
+  query: {metrics: [late_delivery_rate]}
+
+- question: What was gross merchandise value in 2018?
+  source: d05
+  query: {metrics: [gross_merchandise_value], start: '2018-01-01', end: '2018-12-31'}
+
+- question: How much was paid with vouchers for orders placed in 2018?
+  source: d06
+  query: {metrics: [payments], start: '2018-01-01', end: '2018-12-31',
+          filters: [{dimension: payment__payment_type, operator: '=', value: voucher}]}
+
+- question: What is our net promoter score?
+  source: du1
+  cannot_answer: no metric records a net promoter score
+
+- question: How many employees work at Olist?
+  source: du2
+  cannot_answer: employees are not in the data
+
+- question: How many canceled orders contained a health_beauty item?
+  source: c1
+  query: {metrics: [orders_by_category],
+          filters: [{dimension: order__status, operator: '=', value: canceled},
+                    {dimension: product__category, operator: '=', value: health_beauty}]}
+
+- question: How many delivered orders placed in 2018 were paid by boleto?
+  source: c2
+  query: {metrics: [orders_by_payment_type], start: '2018-01-01', end: '2018-12-31',
+          filters: [{dimension: order__status, operator: '=', value: delivered},
+                    {dimension: payment__payment_type, operator: '=', value: boleto}]}
+
+- question: Which product category had the most canceled orders?
+  source: c3
+  query: {metrics: [orders_by_category], group_by: [product__category], order_by: ['-orders_by_category'], limit: 1,
+          filters: [{dimension: order__status, operator: '=', value: canceled}]}
+
+- question: How many orders used a voucher, by year?
+  source: c4
+  query: {metrics: [orders_by_payment_type], group_by: [metric_time__year],
+          filters: [{dimension: payment__payment_type, operator: '=', value: voucher}]}
+
+- question: How many orders placed in 2017 included something from computers_accessories?
+  source: c5
+  query: {metrics: [orders_by_category], start: '2017-01-01', end: '2017-12-31',
+          filters: [{dimension: product__category, operator: '=', value: computers_accessories}]}
+
+- question: What is the cancellation rate for health_beauty?
+  source: c6
+  cannot_answer: an order can hold several categories, so no metric splits the cancellation rate by category
+
+- question: How many repeat customers are there in São Paulo state?
+  source: c7
+  cannot_answer: the repeat_customers metric has no state dimension
+
+- question: What was the average review score for health_beauty orders?
+  source: c8
+  cannot_answer: reviews are per order and an order can hold several categories
+
+- question: Canceled orders by state
+  source: k2.1
+  query: {metrics: [canceled_orders], group_by: [order__state]}
+
+- question: Delivered orders by payment type in 2018
+  source: k5.1
+  query: {metrics: [orders_by_payment_type], group_by: [payment__payment_type], start: '2018-01-01', end: '2018-12-31',
+          filters: [{dimension: order__status, operator: '=', value: delivered}]}
+
+- question: Top 5 product categories by revenue
+  source: k1.1
+  query: {metrics: [revenue], group_by: [product__category], order_by: ['-revenue'], limit: 5}

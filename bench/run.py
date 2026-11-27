@@ -4,6 +4,7 @@
     python bench/run.py --setup A --split test --ids t01 t07
 
 Setups: A = raw text-to-SQL, A+ = A with the business definitions in the prompt, B = semantic layer without descriptions, C = semantic layer modeled for agents.
+H = C with the harness (src/ttym/harness.py); used for the held-out comparison only (bench/run_heldout.py).
 A run is skipped when a saved run exists for the same question and the same prompt fingerprint, so
 reruns only touch what changed. A used-up daily limit stops the run; rerun the same command later.
 Any other provider error is saved as a failed run (scored wrong) and is not retried. Every line printed
@@ -30,6 +31,7 @@ from ttym.agent import SYSTEM as SEMANTIC_SYSTEM, ask  # noqa: E402
 from ttym.llm import LLM, LLMError, QuotaExhausted, load_env  # noqa: E402
 
 SETUPS = ("A", "A+", "B", "C")
+_harnesses: dict = {}  # setup H: the harness built with the server, by server id
 
 
 def build(setup: str):
@@ -39,7 +41,21 @@ def build(setup: str):
         return build_sql_server(), SYSTEM if setup == "A" else SYSTEM + "\n\n" + definitions()
     from ttym.core import SemanticLayer
     from ttym.mcp_server import build_server
-    return build_server(SemanticLayer(bare=setup == "B")), SEMANTIC_SYSTEM
+    layer = SemanticLayer(bare=setup == "B")
+    server = build_server(layer)
+    if setup == "H":
+        from ttym.harness import HARNESS_SYSTEM, Harness
+        _harnesses[id(server)] = Harness(layer)
+        return server, HARNESS_SYSTEM
+    return server, SEMANTIC_SYSTEM
+
+
+async def answer(setup: str, question: str, server, llm, system: str) -> dict:
+    """One question through a setup: the agent alone, or the agent inside the harness (H)."""
+    if setup == "H":
+        from ttym.harness import harness_ask
+        return await harness_ask(question, server, _harnesses[id(server)], llm)
+    return await ask(question, server, llm, system)
 
 
 def definitions() -> str:
@@ -55,8 +71,10 @@ async def fingerprint(setup: str, server, system: str, model: str) -> str:
                  for t in (await client.list_tools()).tools]
         first = "get_schema" if setup.startswith("A") else "list_metrics"
         discovery = (await client.call_tool(first, {})).structured_content
-    blob = json.dumps({"setup": setup, "model": model, "system": system, "tools": tools, "discovery": discovery},
-                      sort_keys=True, default=str)
+    parts = {"setup": setup, "model": model, "system": system, "tools": tools, "discovery": discovery}
+    if setup == "H":  # the harness code and its verified queries are part of what the model sees
+        parts["harness"] = [(ROOT / f).read_text() for f in ("src/ttym/harness.py", "context/verified_queries.yaml")]
+    blob = json.dumps(parts, sort_keys=True, default=str)
     return hashlib.sha256(blob.encode()).hexdigest()[:16]
 
 
@@ -91,7 +109,7 @@ async def run_questions(questions: list[dict], setup: str, out: pathlib.Path, lo
         llm = llm_factory()
         started = time.time()
         try:
-            result = await ask(q["question"], server, llm, system)
+            result = await answer(setup, q["question"], server, llm, system)
         except QuotaExhausted:
             log(f"stopped at {q['id']}: the daily model limit is used up; rerun later to continue")
             return {"done": done, "skipped": skipped, "stopped": q["id"], **totals}

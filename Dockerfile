@@ -19,6 +19,7 @@ COPY src ./src
 COPY dbt ./dbt
 COPY scripts ./scripts
 COPY web ./web
+COPY context ./context
 RUN uv sync --locked --no-dev
 
 # Download Olist, build the models and run the data tests. A failing test fails the build.
