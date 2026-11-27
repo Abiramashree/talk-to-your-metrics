@@ -1,0 +1,337 @@
+# Held-out questions for the harness comparison (C alone vs C + harness). Written after the benchmark,
+# before any harness code and before any run on these questions. Never used to tune prompts, context or
+# the harness, and never added to the verified-query library.
+# `sql` is the correct answer against the raw tables, following definitions.md. `layer` is one semantic-layer
+# query that should give the same rows; bench/check_heldout.py runs both, so every question is checked
+# answerable (or not) before any model sees it. Nothing here is shown to the model.
+# trap: what makes the question harder than the benchmark's.
+
+- id: h01
+  trap: relative-time
+  question: What was revenue last quarter?
+  kinds: [money]
+  sql: |
+    select sum(cast(i.price as decimal(18, 2))) from raw.order_items i join raw.orders o using (order_id)
+    where o.order_status = 'delivered'
+      and o.order_purchase_timestamp >= '2018-07-01' and o.order_purchase_timestamp < '2018-10-01'
+  layer: {metrics: [revenue], start: '2018-07-01', end: '2018-09-30'}
+
+- id: h02
+  trap: relative-time
+  question: What was the cancellation rate last year?
+  kinds: [rate]
+  sql: |
+    select count(*) filter (where order_status = 'canceled') / count(*) from raw.orders
+    where year(order_purchase_timestamp) = 2017
+  layer: {metrics: [cancellation_rate], start: '2017-01-01', end: '2017-12-31'}
+
+- id: h03
+  trap: relative-time
+  question: What was the late delivery rate in the first half of this year?
+  kinds: [rate]
+  sql: |
+    select count(*) filter (where cast(order_delivered_customer_date as date) > cast(order_estimated_delivery_date as date)) / count(*)
+    from raw.orders
+    where order_status = 'delivered' and order_delivered_customer_date is not null
+      and order_purchase_timestamp >= '2018-01-01' and order_purchase_timestamp < '2018-07-01'
+  layer: {metrics: [late_delivery_rate], start: '2018-01-01', end: '2018-06-30'}
+
+- id: h04
+  trap: wording
+  question: What were total sales in 2018?
+  kinds: [money]
+  sql: |
+    select sum(cast(i.price as decimal(18, 2))) from raw.order_items i join raw.orders o using (order_id)
+    where o.order_status = 'delivered' and year(o.order_purchase_timestamp) = 2018
+  layer: {metrics: [revenue], start: '2018-01-01', end: '2018-12-31'}
+
+- id: h05
+  trap: wording
+  question: How much did customers spend per delivered order on average in 2018, excluding shipping?
+  kinds: [money]
+  sql: |
+    select sum(cast(i.price as decimal(18, 2))) / count(distinct o.order_id)
+    from raw.order_items i join raw.orders o using (order_id)
+    where o.order_status = 'delivered' and year(o.order_purchase_timestamp) = 2018
+  layer: {metrics: [average_order_value], start: '2018-01-01', end: '2018-12-31'}
+
+- id: h06
+  trap: wording
+  question: Show GMV by quarter for 2017.
+  kinds: [key, money]
+  sql: |
+    select date_trunc('quarter', o.order_purchase_timestamp),
+           sum(cast(i.price as decimal(18, 2)) + cast(i.freight_value as decimal(18, 2)))
+    from raw.order_items i join raw.orders o using (order_id)
+    where o.order_status = 'delivered' and year(o.order_purchase_timestamp) = 2017
+    group by 1 order by 1
+  layer: {metrics: [gross_merchandise_value], group_by: [metric_time__quarter], start: '2017-01-01', end: '2017-12-31'}
+
+- id: h07
+  trap: two-groupings
+  question: Show revenue for SP and RJ in 2017 and 2018, by state and year.
+  kinds: [key, key, money]
+  sql: |
+    select c.customer_state, year(o.order_purchase_timestamp), sum(cast(i.price as decimal(18, 2)))
+    from raw.order_items i join raw.orders o using (order_id) join raw.customers c using (customer_id)
+    where o.order_status = 'delivered' and c.customer_state in ('SP', 'RJ')
+      and year(o.order_purchase_timestamp) in (2017, 2018)
+    group by 1, 2 order by 1, 2
+  layer: {metrics: [revenue], group_by: [order__state, metric_time__year],
+          filters: [{dimension: order__state, operator: in, value: [SP, RJ]}], start: '2017-01-01', end: '2018-12-31'}
+
+- id: h08
+  trap: level-of-detail
+  question: How many delivered orders placed in 2018 included a bed_bath_table item?
+  kinds: [count]
+  sql: |
+    select count(distinct i.order_id)
+    from raw.order_items i join raw.orders o using (order_id) join raw.products p using (product_id)
+    left join raw.product_category_name_translation t on t.product_category_name = p.product_category_name
+    where o.order_status = 'delivered' and year(o.order_purchase_timestamp) = 2018
+      and coalesce(t.product_category_name_english, p.product_category_name) = 'bed_bath_table'
+  layer: {metrics: [orders_by_category], start: '2018-01-01', end: '2018-12-31',
+          filters: [{dimension: product__category, operator: '=', value: bed_bath_table},
+                    {dimension: order__status, operator: '=', value: delivered}]}
+
+- id: h09
+  trap: level-of-detail
+  question: What were the top 3 payment types by number of orders in 2017?
+  kinds: [key, count]
+  sql: |
+    select p.payment_type, count(distinct o.order_id)
+    from raw.orders o join raw.order_payments p using (order_id)
+    where year(o.order_purchase_timestamp) = 2017
+    group by 1 order by 2 desc limit 3
+  layer: {metrics: [orders_by_payment_type], group_by: [payment__payment_type], start: '2017-01-01', end: '2017-12-31',
+          order_by: ['-orders_by_payment_type'], limit: 3}
+
+- id: h10
+  trap: level-of-detail
+  question: Which product category had the highest freight charges in 2018?
+  kinds: [key, money]
+  top_row: true
+  sql: |
+    select coalesce(t.product_category_name_english, p.product_category_name), sum(cast(i.freight_value as decimal(18, 2)))
+    from raw.order_items i join raw.orders o using (order_id) join raw.products p using (product_id)
+    left join raw.product_category_name_translation t on t.product_category_name = p.product_category_name
+    where o.order_status = 'delivered' and year(o.order_purchase_timestamp) = 2018
+    group by 1 order by 2 desc limit 1
+  layer: {metrics: [freight], group_by: [product__category], start: '2018-01-01', end: '2018-12-31',
+          order_by: ['-freight'], limit: 1}
+
+- id: h11
+  trap: level-of-detail
+  question: How much revenue did health_beauty bring in each quarter of 2018?
+  kinds: [key, money]
+  sql: |
+    select date_trunc('quarter', o.order_purchase_timestamp), sum(cast(i.price as decimal(18, 2)))
+    from raw.order_items i join raw.orders o using (order_id) join raw.products p using (product_id)
+    left join raw.product_category_name_translation t on t.product_category_name = p.product_category_name
+    where o.order_status = 'delivered' and year(o.order_purchase_timestamp) = 2018
+      and coalesce(t.product_category_name_english, p.product_category_name) = 'health_beauty'
+    group by 1 order by 1
+  layer: {metrics: [revenue], group_by: [metric_time__quarter], start: '2018-01-01', end: '2018-12-31',
+          filters: [{dimension: product__category, operator: '=', value: health_beauty}]}
+
+- id: h12
+  trap: filter-value
+  question: How many delivered orders placed in 2018 got a 5-star review?
+  kinds: [count]
+  sql: |
+    with r as (
+      select order_id, review_score from raw.order_reviews
+      qualify row_number() over (partition by order_id order by review_answer_timestamp desc) = 1
+    )
+    select count(*) from raw.orders o join r using (order_id)
+    where o.order_status = 'delivered' and year(o.order_purchase_timestamp) = 2018 and r.review_score = 5
+  layer: {metrics: [delivered_orders], start: '2018-01-01', end: '2018-12-31',
+          filters: [{dimension: order__review_score, operator: '=', value: 5}]}
+
+- id: h13
+  trap: filter-value
+  question: For late deliveries on orders placed in 2018, how many days did delivery take on average?
+  kinds: [average]
+  sql: |
+    select avg(date_diff('day', cast(order_purchase_timestamp as date), cast(order_delivered_customer_date as date)))
+    from raw.orders
+    where order_status = 'delivered' and order_delivered_customer_date is not null
+      and cast(order_delivered_customer_date as date) > cast(order_estimated_delivery_date as date)
+      and year(order_purchase_timestamp) = 2018
+  layer: {metrics: [average_delivery_days], start: '2018-01-01', end: '2018-12-31',
+          filters: [{dimension: order__is_late, operator: '=', value: true}]}
+
+- id: h14
+  trap: filter-value
+  question: What was revenue from customers outside São Paulo state in 2018?
+  kinds: [money]
+  sql: |
+    select sum(cast(i.price as decimal(18, 2)))
+    from raw.order_items i join raw.orders o using (order_id) join raw.customers c using (customer_id)
+    where o.order_status = 'delivered' and year(o.order_purchase_timestamp) = 2018 and c.customer_state <> 'SP'
+  layer: {metrics: [revenue], start: '2018-01-01', end: '2018-12-31',
+          filters: [{dimension: order__state, operator: '!=', value: SP}]}
+
+- id: h15
+  trap: filter-value
+  question: How many orders placed in 2018 were neither delivered nor canceled?
+  kinds: [count]
+  sql: |
+    select count(*) from raw.orders
+    where year(order_purchase_timestamp) = 2018 and order_status not in ('delivered', 'canceled')
+  layer: {metrics: [orders], start: '2018-01-01', end: '2018-12-31',
+          filters: [{dimension: order__status, operator: not in, value: [delivered, canceled]}]}
+
+- id: h16
+  trap: filter-value
+  question: How many orders were canceled in each southern state (PR, SC, RS) in 2018?
+  kinds: [key, count]
+  sql: |
+    select c.customer_state, count(*) from raw.orders o join raw.customers c using (customer_id)
+    where o.order_status = 'canceled' and year(o.order_purchase_timestamp) = 2018
+      and c.customer_state in ('PR', 'SC', 'RS')
+    group by 1 order by 1
+  layer: {metrics: [canceled_orders], group_by: [order__state], start: '2018-01-01', end: '2018-12-31',
+          filters: [{dimension: order__state, operator: in, value: [PR, SC, RS]}]}
+
+- id: h17
+  trap: ranking
+  question: Which state had the highest late delivery rate in 2018?
+  kinds: [key, rate]
+  top_row: true
+  sql: |
+    select c.customer_state,
+           count(*) filter (where cast(o.order_delivered_customer_date as date) > cast(o.order_estimated_delivery_date as date)) / count(*) as r
+    from raw.orders o join raw.customers c using (customer_id)
+    where o.order_status = 'delivered' and o.order_delivered_customer_date is not null
+      and year(o.order_purchase_timestamp) = 2018
+    group by 1 order by 2 desc limit 1
+  layer: {metrics: [late_delivery_rate], group_by: [order__state], start: '2018-01-01', end: '2018-12-31',
+          order_by: ['-late_delivery_rate'], limit: 1}
+
+- id: h18
+  trap: ranking
+  question: Which state had the lowest average review score in 2017?
+  kinds: [key, average]
+  top_row: true
+  sql: |
+    with r as (
+      select order_id, review_score from raw.order_reviews
+      qualify row_number() over (partition by order_id order by review_answer_timestamp desc) = 1
+    )
+    select c.customer_state, avg(r.review_score)
+    from r join raw.orders o using (order_id) join raw.customers c using (customer_id)
+    where year(o.order_purchase_timestamp) = 2017
+    group by 1 order by 2 asc limit 1
+  layer: {metrics: [average_review_score], group_by: [order__state], start: '2017-01-01', end: '2017-12-31',
+          order_by: [average_review_score], limit: 1}
+
+- id: h19
+  trap: ranking
+  question: Compare average order value in RJ and MG for 2018.
+  kinds: [key, money]
+  sql: |
+    select c.customer_state, sum(cast(i.price as decimal(18, 2))) / count(distinct o.order_id)
+    from raw.order_items i join raw.orders o using (order_id) join raw.customers c using (customer_id)
+    where o.order_status = 'delivered' and year(o.order_purchase_timestamp) = 2018 and c.customer_state in ('RJ', 'MG')
+    group by 1 order by 1
+  layer: {metrics: [average_order_value], group_by: [order__state], start: '2018-01-01', end: '2018-12-31',
+          filters: [{dimension: order__state, operator: in, value: [RJ, MG]}]}
+
+- id: h20
+  trap: split
+  question: How many delivered orders placed in 2018 arrived late, and how many on time?
+  kinds: [key, count]
+  sql: |
+    select cast(order_delivered_customer_date as date) > cast(order_estimated_delivery_date as date), count(*)
+    from raw.orders
+    where order_status = 'delivered' and order_delivered_customer_date is not null
+      and year(order_purchase_timestamp) = 2018
+    group by 1 order by 1
+  layer: {metrics: [delivered_orders], group_by: [order__is_late], start: '2018-01-01', end: '2018-12-31'}
+
+- id: h21
+  trap: split
+  question: Break down orders placed in 2017 by review score.
+  kinds: [key, count]
+  sql: |
+    with r as (
+      select order_id, review_score from raw.order_reviews
+      qualify row_number() over (partition by order_id order by review_answer_timestamp desc) = 1
+    )
+    select r.review_score::varchar, count(*) from raw.orders o join r using (order_id)
+    where year(o.order_purchase_timestamp) = 2017
+    group by 1 order by 1
+  layer: {metrics: [orders], group_by: [order__review_score], start: '2017-01-01', end: '2017-12-31'}
+
+- id: h22
+  trap: split
+  question: Show freight by month for the first quarter of 2018.
+  kinds: [key, money]
+  sql: |
+    select date_trunc('month', o.order_purchase_timestamp), sum(cast(i.freight_value as decimal(18, 2)))
+    from raw.order_items i join raw.orders o using (order_id)
+    where o.order_status = 'delivered'
+      and o.order_purchase_timestamp >= '2018-01-01' and o.order_purchase_timestamp < '2018-04-01'
+    group by 1 order by 1
+  layer: {metrics: [freight], group_by: [metric_time__month], start: '2018-01-01', end: '2018-03-31'}
+
+- id: h23
+  trap: single-day
+  question: How many orders were placed on Black Friday 2017 (24 November)?
+  kinds: [count]
+  sql: |
+    select count(*) from raw.orders where cast(order_purchase_timestamp as date) = '2017-11-24'
+  layer: {metrics: [orders], start: '2017-11-24', end: '2017-11-24'}
+
+- id: h24
+  trap: filter-value
+  question: What was the average review score for late deliveries to SP customers on orders placed in 2018?
+  kinds: [average]
+  sql: |
+    with r as (
+      select order_id, review_score from raw.order_reviews
+      qualify row_number() over (partition by order_id order by review_answer_timestamp desc) = 1
+    )
+    select avg(r.review_score)
+    from r join raw.orders o using (order_id) join raw.customers c using (customer_id)
+    where o.order_status = 'delivered' and o.order_delivered_customer_date is not null
+      and cast(o.order_delivered_customer_date as date) > cast(o.order_estimated_delivery_date as date)
+      and c.customer_state = 'SP' and year(o.order_purchase_timestamp) = 2018
+  layer: {metrics: [average_review_score], start: '2018-01-01', end: '2018-12-31',
+          filters: [{dimension: order__is_late, operator: '=', value: true},
+                    {dimension: order__state, operator: '=', value: SP}]}
+
+# Should decline: no metric answers these honestly. Each names why.
+
+- id: h25
+  trap: unanswerable
+  question: What was the cancellation rate for each payment type?
+  why: an order can have several payment types; no metric splits the cancellation rate that way
+  layer_fails: {metrics: [cancellation_rate], group_by: [payment__payment_type]}
+
+- id: h26
+  trap: unanswerable
+  question: What was the average delivery time by product category?
+  why: an order can hold several categories; delivery time is per order
+  layer_fails: {metrics: [average_delivery_days], group_by: [product__category]}
+
+- id: h27
+  trap: unanswerable
+  question: Which seller had the most revenue in 2018?
+  why: sellers are not in the semantic layer
+
+- id: h28
+  trap: unanswerable
+  question: What share of 2018 revenue came from first-time customers?
+  why: revenue cannot be split by new vs returning customer
+
+- id: h29
+  trap: unanswerable
+  question: What was revenue in US dollars in 2017?
+  why: no exchange rates in the data
+
+- id: h30
+  trap: unanswerable
+  question: What is our customer churn rate?
+  why: churn is not defined or recorded
